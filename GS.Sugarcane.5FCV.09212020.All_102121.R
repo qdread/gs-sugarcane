@@ -1,26 +1,25 @@
-rm(list=ls())
-setwd("/homes/omo/public_html/Collaborations/Sugarcane/new_vcf_august/")
+# Paths modified by QDR, 05 Nov 2021
 date="09212020" #08042020
-#setwd("")
+data_dir = '~/ars_projects/islam/data'
 library(rrBLUP)
 library(kernlab)
 library(e1071)
 library(randomForest)
 library(BGLR)
 library(sommer)
-source("http://people.beocat.ksu.edu/~omo/Collaborations/Sugarcane/new_vcf_august/Sugarcane.GS.RRBLUP.ADE.RKHS.SVR.RF.Algorithm.09212020.R")
-source("https://raw.githubusercontent.com/ekfchan/evachan.org-Rscripts/master/rscripts/geno_to_allelecnt.R")
-source("http://people.beocat.ksu.edu/~omo/Collaborations/Sorghum/CoincidenceIndex.R")
+source("Sugarcane.GS.RRBLUP.ADE.RKHS.SVR.RF.Algorithm.09212020.R")
+source("geno_to_allelecnt.R")
+source("CoincidenceIndex.R")
 
-GD <- read.delim("http://people.beocat.ksu.edu/~omo/Collaborations/Sugarcane/new_vcf_august/Numerical.MAF2p.432.Individuals.txt", header=T, stringsAsFactors = F)
+GD <- read.delim(file.path(data_dir, "Numerical.MAF2p.432.Individuals.txt"), header=T, stringsAsFactors = F)
 GD[1:6,1:6]
-#dat=myGAPIT$GD
+
 dat=GD
 nan=dat[,1]
 nan <- as.vector(as.matrix(nan))
 dat <- dat[,2:ncol(dat)]
 dat=as.matrix(dat)
-#dat=dat-1
+
 rownames(dat)=nan
 dat[1:6,1:6]
 dat[dat==1] <- 2
@@ -31,13 +30,13 @@ df.nam.geno <- data.frame(rownames(dat))
 names(df.nam.geno) <- "Taxa"
 
 df2 <- as.matrix(dat)
-#df2-1
+
 df2[1:6,1:6]
 any(is.na(df2))
 sum(is.na(df2))
 
 
-phen.taxa <- read.csv("http://people.beocat.ksu.edu/~omo/Collaborations/Sugarcane/new_vcf_august/Phenotypes.Rust.GS.09212020.csv", header=T)
+phen.taxa <- read.csv(file.path(data_dir, "Phenotypes.Rust.GS.09212020.csv"), header=T)
 head(phen.taxa)
 
 colnames(phen.taxa)[1] <- "Taxa"

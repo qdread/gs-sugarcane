@@ -46,12 +46,13 @@ diploid.polyploid.5cfv <- function(phenames=NULL, diploid.Geno=NULL, m_train.phe
       
       print(paste("--------- Initializing Analysis.....Trait to analyse: ", phenames[l], " --- cycle ", r, " out of ", cycles, " cycles !!!!!!!----------", sep = "")) 
       
+      # Assign individuals to folds and add to phenotype df -QDR
       Pheno1.TRS1 <- as.data.frame(Pheno1)
       Pheno1.TRS1$id <- sample(1:k, nrow(Pheno1.TRS1), replace = TRUE)
       
     list <- 1:k
     
-    
+    # Loop thru folds within trait and cycle -QDR
     for (f in 1:k){
       print(paste("--------- Initializing Analysis.....Trait to analyse: ", phenames[l], " --- cycle ", r, " out of ", cycles," --- CrossFolds ", f," !!!!!!!----------", sep = ""))
       pheno_trainingset=NULL

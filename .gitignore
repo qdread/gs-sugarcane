@@ -4,3 +4,6 @@
 .Ruserdata
 *.dat
 *observed*.txt
+
+# Symlink to project data folder
+project

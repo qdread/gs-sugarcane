@@ -1,6 +1,9 @@
 # Paths modified by QDR, 05 Nov 2021
+# Install version 4.1.0 of sommer, current as of 21 Sep 2020
+# install.packages('~/R/sommer_4.1.0.tar.gz', repos = NULL, type = 'source')
+
 date="09212020" #08042020
-data_dir = '~/ars_projects/islam/data'
+data_dir = 'C:/Users/Quentin/onedrive_usda/ars_projects/islam/data'
 library(rrBLUP)
 library(kernlab)
 library(e1071)

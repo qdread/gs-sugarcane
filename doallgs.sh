@@ -2,6 +2,7 @@
 #SBATCH --job-name=do_all_gs
 #SBATCH --ntasks=16
 #SBATCH --mem=16gb
+#SBATCH --partition=medium
 #SBATCH --time=3-00:00:00
 
 cd /home/quentin.read/GitHub/gs-sugarcane

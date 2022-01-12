@@ -159,7 +159,7 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   M <- tcrossprod(GD_comb)/ncol(GD_comb)
 
   ETA_RK <-list(list(K = M, model = 'RKHS')) 
-  fit_RK <- BGLR(y = Y_comb, ETA = ETA_RK, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('project/temp/{UUID}'))
+  fit_RK <- BGLR(y = Y_comb, ETA = ETA_RK, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
   
   Y_pred = fit_RK$yHat[idx_test]
   return(Y_pred)

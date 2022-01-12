@@ -5,8 +5,9 @@
 *.dat
 *observed*.txt
 
-# Symlink to project data folder
+# Symlink to project and temp data folders
 project
+temp
 
 # Slurm output files 
 slurm-*.out

@@ -11,6 +11,8 @@ library(randomForest)
 library(BGLR)
 library(sommer) # Note: some functions in rrBLUP have the same name as some in this package.
 
+source('GS_sugarcane_2022_fns.R')
+
 # Read genotype and phenotype data ----------------------------------------
 
 genotypes <- fread('project/data/sugarcane.10501.SNPs.432.Inds.CloneNames.hmp.txt', sep = '\t')
@@ -24,11 +26,6 @@ phenotypes <- rbindlist(phenotype_sheets, fill = TRUE)
 id_columns <- c("rs.", "alleles", "chrom", "pos", "strand", "assembly.", "center", "protLSID", "assayLSID", "panelLSID", "QCcode")
 clone_columns <- setdiff(names(genotypes), id_columns)
 
-# How many contain more than two alleles?
-allele_table <- table(genotypes$alleles)
-table(nchar(genotypes$alleles) > 3)
-
-
 # Convert SNPs to numerical format ----------------------------------------
 
 # Exclude rows with >2 alleles
@@ -41,10 +38,10 @@ allele1 <- map_chr(alleles_list, 1)
 allele2 <- map_chr(alleles_list, 2)
 
 geno_mat <- map2(asplit(geno_mat_raw, 1), alleles_list, function(x, allele) fcase(x == allele[1], 0, x == allele[2], 2, default = 1))
-geno_mat <- do.call(rbind, geno_mat)
+geno_mat <- do.call(cbind, geno_mat) # Transpose the matrix so rows are individuals and columns SNPs
 
-# Set column names of genotype matrix to names of clones
-dimnames(geno_mat) <- list(NULL, clone_columns)
+# Set row names of genotype matrix to names of clones
+dimnames(geno_mat) <- list(clone_columns, NULL)
 
 # Average traits by clone -------------------------------------------------
 
@@ -73,3 +70,5 @@ n_folds <- 5
 
 # Then in each case do 25 iterations.
 
+testgs <- gs_all(GD = geno_mat, PD = pheno_means, 
+                 crop_cycle_to_use = 'Plant Cane_2017', trait = 'stkwt_kg', k = n_folds, rand_seed = 333, marker_density = 1)

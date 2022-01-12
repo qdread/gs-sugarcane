@@ -3,7 +3,7 @@
 # install.packages('~/R/sommer_4.1.0.tar.gz', repos = NULL, type = 'source')
 
 date="09212020" #08042020
-data_dir = 'C:/Users/Quentin/onedrive_usda/ars_projects/islam/data'
+data_dir = 'C:/Users/qdread/onedrive_usda/ars_projects/islam/data'
 library(rrBLUP)
 library(kernlab)
 library(e1071)

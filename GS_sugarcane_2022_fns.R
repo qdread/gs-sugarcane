@@ -27,7 +27,7 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density, rand_see
   # Assign individuals to cross-validation folds
   fold_ids <- sample(rep_len(1:k, nrow(PD)))
   
-  res <- list()
+  pred_values <- list()
   
   for (fold in 1:k) {
     message('------\nFold ', fold, '\n------')
@@ -44,27 +44,29 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density, rand_see
     Y_train <- PD_train[[trait]]
     Y_test <- PD_test[[trait]]
     
-    # Apply the five models and return the diagnostic values
+    # Apply the five models and return the predicted values
     message('Running rrBLUP (1 of 5)')
-    diags_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
     message('Running ADE (2 of 5)')
-    diags_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
     message('Running BGLR (3 of 5)')
-    diags_BGLR <- gs_BGLR(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_BGLR <- gs_BGLR(Y_train, Y_test, GD_train, GD_test)
     message('Running SVM (4 of 5)')
-    diags_SVM <- gs_SVM(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_SVM <- gs_SVM(Y_train, Y_test, GD_train, GD_test)
     message('Running RF (5 of 5)')
-    diags_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
-    # Store results in data frame with fold ID and model type
-    res[[fold]] <- data.frame(model = c('RRBLUP', 'ADE', 'BGLR', 'SVM', 'RF'),
-                              fold = fold,
-                              do.call(rbind, list(diags_rrBLUP, diags_ADE, diags_BGLR, diags_SVM, diags_RF)))
+    # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
+    pred_values[[fold]] <- data.frame(fold = fold, Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, BGLR = Y_pred_BGLR, SVM = Y_pred_SVM, RF = Y_pred_RF)
   }
- 
-  # Combine list of data frames together and return
-  return(do.call(rbind, res))
-
+  
+  # Combine observed and predicted values for the folds and calculate prediction accuracy metrics
+  pred_values_allfolds <- do.call(rbind, pred_values) |> 
+    setDT() |>
+    melt(id.vars = c('fold','Y_obs'), variable.name = 'model', value.name = 'Y_pred')
+  pred_metrics <- pred_values_allfolds[, calc_metrics(Y_obs, Y_pred), by = model]
+  
+  return(pred_metrics)
 }
 
 
@@ -75,7 +77,7 @@ calc_metrics <- function(Y_obs, Y_pred) {
   r <- cor(Y_obs, Y_pred, use = 'complete')
   mod <- lm(Y_obs ~ Y_pred)
   ci <- CI(Y_obs, Y_pred, s = 0.2, top = TRUE)
-  rmse <- sqrt(mean((Y_obs - Y_pred)^2))
+  rmse <- sqrt(mean((Y_obs - Y_pred)^2, na.rm = TRUE))
   
   return(data.frame(r = r, intercept = mod$coefficients[1], slope = mod$coefficients[2], CI = ci, RMSE = rmse))
 }
@@ -111,10 +113,9 @@ gs_rrBLUP <- function(Y_train, Y_test, GD_train, GD_test) {
   mEff.Ro <- rrMod.Ro$u
   e.Ro = as.matrix(mEff.Ro)
   predYv.Ro = GD_test_rrBLUP %*% e.Ro
-  predYr.Ro = predYv.Ro[,1] + rrMod.Ro$beta
+  Y_pred = predYv.Ro[,1] + c(rrMod.Ro$beta)
   
-  # FIXME Here, write the observed and predicted phenotypic values to a file if needed
-  calc_metrics(Y_obs = Y_test, Y_pred = predYr.Ro)
+  return(Y_pred)
 }
 
 
@@ -147,8 +148,8 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   ETA.AD.2 <- list(add=list(Z=Za.2,K=A1.2), dom=list(Z=Zd.2,K=D1.2), epi=list(Z=Ze.2,K=E1.2))
   ans.AD.2 <- MEMMA(Y=Y_comb, ZETA=ETA.AD.2) 
   
-  # FIXME Here write observed and predicted phenotypes to a file if needed
-  calc_metrics(Y_obs = Y_test, Y_pred = ans.AD.2$fitted.y[idx_test])
+  Y_pred = ans.AD.2$fitted.y[idx_test]
+  return(Y_pred)
 }
 
 
@@ -168,8 +169,8 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   ETA.2 <-list(list(K = M.2,model = 'RKHS')) 
   fm.RK.2 <- BGLR(y=Y_comb, ETA=ETA.2, response_type="gaussian", nIter=12000, burnIn=2000, verbose = FALSE)
   
-  #FIXME Write observed and predicted phenotypes to file if needed
-  calc_metrics(Y_obs = Y_test, Y_pred = fm.RK.2$yHat[idx_test])
+  Y_pred = fm.RK.2$yHat[idx_test]
+  return(Y_pred)
 }
 
 
@@ -178,10 +179,9 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
 gs_SVM <- function(Y_train, Y_test, GD_train, GD_test) {
   #FIXME Any tuning parameters?
   svm.model <- svm(GD_train, Y_train, type = 'eps-regression', kernel = 'radial', scale = FALSE)
-  svm_pred <- predict(svm.model, GD_test, decision.values = TRUE)
+  Y_pred <- predict(svm.model, GD_test, decision.values = TRUE)
   
-  #FIXME Write observed and predicted phenotypes to file if needed
-  calc_metrics(Y_obs = Y_test, Y_pred = svm_pred)
+  return(Y_pred)
 }
 
 
@@ -197,8 +197,6 @@ gs_RF <- function(Y_train, Y_test, GD_train, GD_test) {
   rf <- randomForest(GD_train, Y_train, tree=5000, mtry=floor(sqrt(ncol(GD_train))), 
                      replace=TRUE, classwt=NULL, nodesize = 1, importance=FALSE, localImp=FALSE, nPerm=1,norm.votes=TRUE, do.trace=FALSE)
   
-  rf_pred = predict(rf, newdata=GD_test)
-  
-  #FIXME Write observed and predicted phenotypes to file if needed
-  calc_metrics(Y_obs = Y_test, Y_pred = rf_pred)
+  Y_pred = predict(rf, newdata=GD_test)
+  return(Y_pred)
 }

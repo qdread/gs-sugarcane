@@ -7,3 +7,13 @@
 
 # Symlink to project data folder
 project
+
+# Slurm output files 
+slurm-*.out
+
+# BRMS model fits
+*.rds
+
+# Rendered .Rmd notebooks
+*.html
+*.pdf

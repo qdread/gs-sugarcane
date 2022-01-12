@@ -71,4 +71,4 @@ n_folds <- 5
 # Then in each case do 25 iterations.
 
 testgs <- gs_all(GD = geno_mat, PD = pheno_means, 
-                 crop_cycle_to_use = 'Plant Cane_2017', trait = 'stkwt_kg', k = n_folds, rand_seed = 333, marker_density = 1)
+                 crop_cycle_to_use = 'Plant Cane_2017', trait = 'stkwt_kg', k = n_folds, rand_seed = 333, marker_density = 0.9)

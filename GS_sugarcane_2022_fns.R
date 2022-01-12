@@ -30,7 +30,7 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density, rand_see
   res <- list()
   
   for (fold in 1:k) {
-    message('Fold ', fold, '\n------')
+    message('------\nFold ', fold, '\n------')
     # Create training and test set for GD and PD
     train_clones <- PD$Clone[!fold_ids %in% fold]
     test_clones <- PD$Clone[fold_ids %in% fold]
@@ -165,8 +165,8 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
 
   M.2 <-tcrossprod(GD_comb)/ncol(GD_comb)
 
-  ETA.2 <-list(list(K=M.2,model='RKHS')) 
-  fm.RK.2<-BGLR(y=Y_comb, ETA=ETA.2, response_type="gaussian", nIter=12000, burnIn=2000)
+  ETA.2 <-list(list(K = M.2,model = 'RKHS')) 
+  fm.RK.2 <- BGLR(y=Y_comb, ETA=ETA.2, response_type="gaussian", nIter=12000, burnIn=2000, verbose = FALSE)
   
   #FIXME Write observed and predicted phenotypes to file if needed
   calc_metrics(Y_obs = Y_test, Y_pred = fm.RK.2$yHat[idx_test])
@@ -177,7 +177,7 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
 
 gs_SVM <- function(Y_train, Y_test, GD_train, GD_test) {
   #FIXME Any tuning parameters?
-  svm.model <- svm(GD_train, GD_test, type = 'eps-regression', kernel = 'radial', scale = FALSE)
+  svm.model <- svm(GD_train, Y_train, type = 'eps-regression', kernel = 'radial', scale = FALSE)
   svm_pred <- predict(svm.model, GD_test, decision.values = TRUE)
   
   #FIXME Write observed and predicted phenotypes to file if needed

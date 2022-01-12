@@ -147,7 +147,7 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 
 gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   # Generate unique ID for temp files
-  UUID <- uuid::UUIDgenerate()
+  UUID <- UUIDgenerate()
 
   # Combine train and test sets into single vector (Y) and matrix (GD)
   Y_comb <- c(Y_train, rep(NA, length(Y_test)))
@@ -181,8 +181,12 @@ gs_SVM <- function(Y_train, Y_test, GD_train, GD_test) {
 
 gs_RF <- function(Y_train, Y_test, GD_train, GD_test) {
   
+  # the randomForest function does not accept NA in response so remove those rows
+  na_idx <- is.na(Y_train)
+  Y_train <- Y_train[!na_idx]
+  
   # Adjust values to -1, 0, 1
-  GD_train <- GD_train - 1
+  GD_train <- GD_train[!na_idx, ] - 1
   GD_test <- GD_test - 1
   
   # FIXME Grid search tuning parameters?

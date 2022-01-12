@@ -10,6 +10,7 @@ library(data.table)
 library(purrr)
 library(furrr)
 library(glue)
+library(uuid)
 library(rrBLUP)
 library(kernlab)
 library(e1071)
@@ -86,11 +87,15 @@ n_folds <- 5
 
 combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('Plant Cane_2017', 'Ratoon 1_2018', 'Ratoon 2_2019'))
 
+# 1st and 2nd ratoons do not have diameter data so remove those from the combinations
+combos <- combos[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon 1_2018', 'Ratoon 2_2019'))]
+
+# Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.
 gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
   pred_vals <- gs_all(GD = geno_mat, PD = pheno_means, 
                       crop_cycle_to_use = crop_cycle, trait = trait, k = n_folds, marker_density = 1)
   fwrite(pred_vals, glue('project/output/phenotypes_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
-  pred_metrics <- pred_vals_test[, calc_metrics(Y_obs, Y_pred), by = model]
+  pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
   fwrite(pred_metrics, glue('project/output/metrics_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
   return(pred_metrics)
 }, .options = furrr_options(seed = 777))

@@ -146,6 +146,8 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 # BGLR GS function --------------------------------------------------------
 
 gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
+  # Generate unique ID for temp files
+  UUID <- uuid::UUIDgenerate()
 
   # Combine train and test sets into single vector (Y) and matrix (GD)
   Y_comb <- c(Y_train, rep(NA, length(Y_test)))
@@ -157,7 +159,7 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   M <- tcrossprod(GD_comb)/ncol(GD_comb)
 
   ETA_RK <-list(list(K = M, model = 'RKHS')) 
-  fit_RK <- BGLR(y = Y_comb, ETA = ETA_BGLR, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE)
+  fit_RK <- BGLR(y = Y_comb, ETA = ETA_RK, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('project/temp/{UUID}'))
   
   Y_pred = fit_RK$yHat[idx_test]
   return(Y_pred)

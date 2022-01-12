@@ -1,22 +1,15 @@
-# Function to split dataset into training and test sets
-# Given n (number of individuals in dataset), k (number of folds), and p (proportion of dataset used for training)
-split_train_test <- function(k, p, n) {
-  train_size <- ceiling(p*n)
-  replicate(k, sample(1:n, train_size, replace = FALSE))
-}
+# GENOMIC SELECTION SUGARCANE: SOURCE FILE FOR FUNCTIONS
+# Author: Quentin Read
+# Date: 12 January 2022
+# ------------------------------------------------------
 
 
 # Master GS function ------------------------------------------------------
 
-# GS function. This will do one repetition for one trait and a given value of marker density
-# Also supply an output directory to write the intermediate files
-gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density, rand_seed, output_dir = NULL) {
+# GS function. This will do one repetition for one trait and a given value of marker density. Return observed and predicted values.
+gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density) {
   # Get clone ID and trait value for the given crop cycle.
   PD <- PD[crop_cycle == crop_cycle_to_use, c('Clone', trait), with = FALSE]
-  
-  # If no random seed is supplied, use the current time.
-  if (missing(rand_seed)) rand_seed <- floor(as.numeric(Sys.time())%%123456)
-  set.seed(rand_seed)
   
   # Subsample markers to given density
   if (marker_density < 1) {
@@ -57,16 +50,15 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density, rand_see
     Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
-    pred_values[[fold]] <- data.frame(fold = fold, Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, BGLR = Y_pred_BGLR, SVM = Y_pred_SVM, RF = Y_pred_RF)
+    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, BGLR = Y_pred_BGLR, SVM = Y_pred_SVM, RF = Y_pred_RF)
   }
   
-  # Combine observed and predicted values for the folds and calculate prediction accuracy metrics
+  # Combine observed and predicted values for the folds
   pred_values_allfolds <- do.call(rbind, pred_values) |> 
     setDT() |>
-    melt(id.vars = c('fold','Y_obs'), variable.name = 'model', value.name = 'Y_pred')
-  pred_metrics <- pred_values_allfolds[, calc_metrics(Y_obs, Y_pred), by = model]
-  
-  return(pred_metrics)
+    melt(id.vars = c('fold', 'Clone', 'Y_obs'), variable.name = 'model', value.name = 'Y_pred')
+
+  return(pred_values_allfolds)
 }
 
 
@@ -133,22 +125,20 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   GD_comb <- rbind(GD_train, GD_test) - 1 # adjust to -1, 0, 1 values
   
   # FIXME the argument shrink = TRUE was removed because it is not in the current up to date sommer package. Check if this is OK.
-  A1.2 <- A.mat(GD_comb) # additive relationship matrix 
-  D1.2 <- D.mat(GD_comb) # dominance
-  E1.2 <- E.mat(GD_comb) # epistasis
+  A <- A.mat(GD_comb) # additive relationship matrix 
+  D <- D.mat(GD_comb) # dominance
+  E <- E.mat(GD_comb) # epistasis
   
-  Za.2 <- diag(length(Y_comb)) 
-  Zd.2 <- diag(length(Y_comb))
-  Ze.2 <- diag(length(Y_comb))
+  Z <- diag(length(Y_comb)) 
+
+  rownames(A) <- 1:nrow(A)
+  rownames(D) <- 1:nrow(D)
+  rownames(E) <- 1:nrow(E)
   
-  rownames(A1.2) <- 1:nrow(A1.2)
-  rownames(D1.2) <- 1:nrow(D1.2)
-  rownames(E1.2) <- 1:nrow(E1.2)
+  ETA_ADE <- list(add=list(Z=Z,K=A), dom=list(Z=Z,K=D), epi=list(Z=Z,K=E))
+  fit_ADE <- MEMMA(Y=Y_comb, ZETA=ETA_ADE) 
   
-  ETA.AD.2 <- list(add=list(Z=Za.2,K=A1.2), dom=list(Z=Zd.2,K=D1.2), epi=list(Z=Ze.2,K=E1.2))
-  ans.AD.2 <- MEMMA(Y=Y_comb, ZETA=ETA.AD.2) 
-  
-  Y_pred = ans.AD.2$fitted.y[idx_test]
+  Y_pred = fit_ADE$fitted.y[idx_test]
   return(Y_pred)
 }
 
@@ -164,12 +154,12 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   
   GD_comb <- rbind(GD_train, GD_test)
 
-  M.2 <-tcrossprod(GD_comb)/ncol(GD_comb)
+  M <- tcrossprod(GD_comb)/ncol(GD_comb)
 
-  ETA.2 <-list(list(K = M.2,model = 'RKHS')) 
-  fm.RK.2 <- BGLR(y=Y_comb, ETA=ETA.2, response_type="gaussian", nIter=12000, burnIn=2000, verbose = FALSE)
+  ETA_RK <-list(list(K = M, model = 'RKHS')) 
+  fit_RK <- BGLR(y = Y_comb, ETA = ETA_BGLR, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE)
   
-  Y_pred = fm.RK.2$yHat[idx_test]
+  Y_pred = fit_RK$yHat[idx_test]
   return(Y_pred)
 }
 
@@ -194,9 +184,37 @@ gs_RF <- function(Y_train, Y_test, GD_train, GD_test) {
   GD_test <- GD_test - 1
   
   # FIXME Grid search tuning parameters?
-  rf <- randomForest(GD_train, Y_train, tree=5000, mtry=floor(sqrt(ncol(GD_train))), 
-                     replace=TRUE, classwt=NULL, nodesize = 1, importance=FALSE, localImp=FALSE, nPerm=1,norm.votes=TRUE, do.trace=FALSE)
+  rf <- randomForest(GD_train, Y_train, ntree=5000, mtry=floor(sqrt(ncol(GD_train))), 
+                     replace=TRUE, classwt=NULL, nodesize = 1, importance=FALSE, localImp=FALSE, nPerm=1, norm.votes=TRUE, do.trace=FALSE)
   
   Y_pred = predict(rf, newdata=GD_test)
   return(Y_pred)
 }
+
+
+# Utility to unnest data table --------------------------------------------
+
+unnest_dt <- function(dt, col, id, id_vars = NULL) {
+  stopifnot(is.data.table(dt))
+  
+  if (missing(id_vars)) {
+    by <-substitute(id)
+    col <-substitute(unlist(col, recursive = FALSE))
+    
+    dt[, eval(col), by = eval(by)]
+  } else {
+    col <-substitute(unlist(col, recursive = FALSE))
+    dt[, eval(col), by = id_vars]
+  }
+}
+
+# Function to split data into training and test ---------------------------
+
+# (currently not being used)
+
+# Given n (number of individuals in dataset), k (number of folds), and p (proportion of dataset used for training)
+split_train_test <- function(k, p, n) {
+  train_size <- ceiling(p*n)
+  replicate(k, sample(1:n, train_size, replace = FALSE))
+}
+

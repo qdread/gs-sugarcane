@@ -1,9 +1,15 @@
+# GENOMIC SELECTION SUGARCANE: SCRIPT TO RUN GS MODELS
+# Author: Quentin Read
+# Date: 12 January 2022
+# ----------------------------------------------------
 
 # Load packages -----------------------------------------------------------
 
 library(readxl)
 library(data.table)
 library(purrr)
+library(furrr)
+library(glue)
 library(rrBLUP)
 library(kernlab)
 library(e1071)
@@ -11,7 +17,11 @@ library(randomForest)
 library(BGLR)
 library(sommer) # Note: some functions in rrBLUP have the same name as some in this package.
 
-source('GS_sugarcane_2022_fns.R')
+source('GS_sugarcane_2022_fns.R') # Load needed functions
+
+# Set up parallel processing
+options(mc.cores = 16)
+plan(multicore(workers = 16))
 
 # Read genotype and phenotype data ----------------------------------------
 
@@ -19,8 +29,9 @@ genotypes <- fread('project/data/sugarcane.10501.SNPs.432.Inds.CloneNames.hmp.tx
 
 # Read each sheet from phenotype XLSX and combine to single data frame
 # Note there are multiple different NA flags in the data
-sheet_names <- excel_sheets('project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx')
-phenotype_sheets <- map(sheet_names, ~ cbind(crop_cycle = ., read_xlsx('project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx', sheet = ., na = c('.', '-', '-!'))))
+pheno_file <- 'project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx'
+sheet_names <- excel_sheets(pheno_file)
+phenotype_sheets <- map(sheet_names, ~ cbind(crop_cycle = ., read_xlsx(pheno_file, sheet = ., na = c('.', '-', '-!'))))
 phenotypes <- rbindlist(phenotype_sheets, fill = TRUE)
 
 id_columns <- c("rs.", "alleles", "chrom", "pos", "strand", "assembly.", "center", "protLSID", "assayLSID", "panelLSID", "QCcode")
@@ -56,7 +67,8 @@ pheno_means <- phenotypes[, lapply(.SD, mean, na.rm = TRUE), by = .(crop_cycle, 
 check_IDs <- c('CP96-1252', 'CP00-1101')
 pheno_means <- pheno_means[!is.na(Clone) & !Clone %in% check_IDs]
 
-# Setup data structures for output ----------------------------------------
+
+# Run GS models -----------------------------------------------------------
 
 n_iter <- 25
 n_folds <- 5
@@ -70,5 +82,20 @@ n_folds <- 5
 
 # Then in each case do 25 iterations.
 
-testgs <- gs_all(GD = geno_mat, PD = pheno_means, 
-                 crop_cycle_to_use = 'Plant Cane_2017', trait = 'stkwt_kg', k = n_folds, rand_seed = 333, marker_density = 0.9)
+# For now, just do iterations, models, crop cycles, and traits. Do not vary training size or marker density.
+
+combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('Plant Cane_2017', 'Ratoon 1_2018', 'Ratoon 2_2019'))
+
+gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
+  pred_vals <- gs_all(GD = geno_mat, PD = pheno_means, 
+                      crop_cycle_to_use = crop_cycle, trait = trait, k = n_folds, marker_density = 1)
+  fwrite(pred_vals, glue('project/output/phenotypes_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
+  pred_metrics <- pred_vals_test[, calc_metrics(Y_obs, Y_pred), by = model]
+  fwrite(pred_metrics, glue('project/output/metrics_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
+  return(pred_metrics)
+}, .options = furrr_options(seed = 777))
+
+combos[, metrics := gs_pred_metrics]
+results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle))
+
+fwrite(results, 'project/output/all_metrics.csv')

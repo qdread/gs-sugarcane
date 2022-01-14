@@ -10,6 +10,7 @@ library(data.table)
 library(purrr)
 library(furrr)
 library(glue)
+library(lme4)
 library(uuid)
 library(rrBLUP)
 library(kernlab)
@@ -55,18 +56,41 @@ geno_mat <- do.call(cbind, geno_mat) # Transpose the matrix so rows are individu
 # Set row names of genotype matrix to names of clones
 dimnames(geno_mat) <- list(clone_columns, NULL)
 
-# Average traits by clone -------------------------------------------------
+
+# Get BLUPs for each trait and crop cycle ---------------------------------
 
 # Group columns by ID, physical traits, and economic traits
-phen_id_columns <- c("variable", "Clone", "Rep", "Tier", "Plot", "Crop", "Row", "Column")
 physical_traits <- c("stkwt_kg", "diam", "Brix", "Fiber", "Pol", "Sucrose", "Purity", "stalk_ha")
 economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
 
-pheno_means <- phenotypes[, lapply(.SD, mean, na.rm = TRUE), by = .(crop_cycle, Clone), .SDcols = c(physical_traits, economic_traits)]
+phenotypes_long <- phenotypes[!crop_cycle %in% 'Ratoonability', mget(c("crop_cycle", "Clone", "Rep", "Row", "Column", physical_traits, economic_traits))] |>
+  melt(id.vars = c("crop_cycle", "Clone", "Rep", "Row", "Column"), variable.name = 'trait')
+
+# Function to calculate BLUPs for each trait. If only one crop cycle has that trait, do not fit crop cycle in the model.
+blup_trait <- function(dat) {
+  if (length(unique(dat$crop_cycle)) > 1) {
+    lmm <- lmer(value ~ 0 + crop_cycle + (1|Clone) + (1|Row) + (1|Column), data = dat,
+                control = lmerControl(optimizer = 'bobyqa'))
+    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
+    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup)
+  } else {
+    lmm <- lmer(value ~ 1 + (1|Clone) + (1|Row) + (1|Column), data = dat,
+                control = lmerControl(optimizer = 'bobyqa'))
+    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
+    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup, as.numeric(NA), as.numeric(NA))
+  }
+}
+
+# First and second ratoons do not have diameter data. Remove those rows
+phenotypes_long <- phenotypes_long[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon 1_2018', 'Ratoon 2_2019'))]
+
+# Get the BLUPs!
+pheno_blups <- phenotypes_long[, blup_trait(.SD), by = trait]
+setnames(pheno_blups, c('trait', 'Clone', 'PlantCane', 'Ratoon1', 'Ratoon2'))
 
 # Remove the clone checks 
 check_IDs <- c('CP96-1252', 'CP00-1101')
-pheno_means <- pheno_means[!is.na(Clone) & !Clone %in% check_IDs]
+pheno_blups <- pheno_blups[!Clone %in% check_IDs]
 
 
 # Run GS models -----------------------------------------------------------
@@ -85,18 +109,18 @@ n_folds <- 5
 
 # For now, just do iterations, models, crop cycles, and traits. Do not vary training size or marker density.
 
-combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('Plant Cane_2017', 'Ratoon 1_2018', 'Ratoon 2_2019'))
+combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('PlantCane', 'Ratoon1', 'Ratoon2'))
 
 # 1st and 2nd ratoons do not have diameter data so remove those from the combinations
-combos <- combos[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon 1_2018', 'Ratoon 2_2019'))]
+combos <- combos[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon_1', 'Ratoon_2'))]
 
 # Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.
 gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
-  pred_vals <- gs_all(GD = geno_mat, PD = pheno_means, 
-                      crop_cycle_to_use = crop_cycle, trait = trait, k = n_folds, marker_density = 1)
-  fwrite(pred_vals, glue('project/output/phenotypes_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
+  pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
+                      crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, marker_density = 1)
+  fwrite(pred_vals, glue('project/output/phenotypes_{trait}_{crop_cycle}_{iter}.csv'))
   pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
-  fwrite(pred_metrics, glue('project/output/metrics_{trait}_{gsub(" ","_",crop_cycle)}_{iter}.csv'))
+  fwrite(pred_metrics, glue('project/output/metrics_{trait}_{crop_cycle}_{iter}.csv'))
   return(pred_metrics)
 }, .options = furrr_options(seed = 777))
 

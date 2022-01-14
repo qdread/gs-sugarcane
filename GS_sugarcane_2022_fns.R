@@ -7,9 +7,9 @@
 # Master GS function ------------------------------------------------------
 
 # GS function. This will do one repetition for one trait and a given value of marker density. Return observed and predicted values.
-gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density) {
+gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
   # Get clone ID and trait value for the given crop cycle.
-  PD <- PD[crop_cycle == crop_cycle_to_use, c('Clone', trait), with = FALSE]
+  PD <- PD[trait == trait_to_use, c('Clone', crop_cycle_to_use), with = FALSE]
   
   # Subsample markers to given density
   if (marker_density < 1) {
@@ -34,23 +34,23 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait, k, marker_density) {
     GD_train <- GD[match(PD_train$Clone, dimnames(GD)[[1]]), ]
     GD_test <- GD[match(PD_test$Clone, dimnames(GD)[[1]]), ]
     
-    Y_train <- PD_train[[trait]]
-    Y_test <- PD_test[[trait]]
+    Y_train <- PD_train[[2]]
+    Y_test <- PD_test[[2]]
     
     # Apply the five models and return the predicted values
     message('Running rrBLUP (1 of 5)')
     Y_pred_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
     message('Running ADE (2 of 5)')
     Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
-    message('Running BGLR (3 of 5)')
-    Y_pred_BGLR <- gs_BGLR(Y_train, Y_test, GD_train, GD_test)
+    message('Running RKHS (3 of 5)')
+    Y_pred_BGLR <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
     message('Running SVM (4 of 5)')
     Y_pred_SVM <- gs_SVM(Y_train, Y_test, GD_train, GD_test)
     message('Running RF (5 of 5)')
     Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
-    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, BGLR = Y_pred_BGLR, SVM = Y_pred_SVM, RF = Y_pred_RF)
+    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, SVM = Y_pred_SVM, RF = Y_pred_RF)
   }
   
   # Combine observed and predicted values for the folds
@@ -143,7 +143,9 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 }
 
 
-# BGLR GS function --------------------------------------------------------
+# RKHS GS function --------------------------------------------------------
+
+# RKHS model implemented in BGLR package
 
 gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   # Generate unique ID for temp files
@@ -158,10 +160,10 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
 
   M <- tcrossprod(GD_comb)/ncol(GD_comb)
 
-  ETA_RK <-list(list(K = M, model = 'RKHS')) 
-  fit_RK <- BGLR(y = Y_comb, ETA = ETA_RK, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
+  ETA_RKHS <-list(list(K = M, model = 'RKHS')) 
+  fit_RKHS <- BGLR(y = Y_comb, ETA = ETA_RKHS, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
   
-  Y_pred = fit_RK$yHat[idx_test]
+  Y_pred = fit_RKHS$yHat[idx_test]
   return(Y_pred)
 }
 

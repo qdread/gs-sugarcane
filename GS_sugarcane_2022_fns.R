@@ -4,9 +4,27 @@
 # ------------------------------------------------------
 
 
+# Function to find BLUPs by trait -----------------------------------------
+
+# Crop cycle is fit as a fixed effect.
+# If a trait was only measured during one crop cycle, do not fit crop cycle in the model.
+blup_trait <- function(dat) {
+  if (length(unique(dat$crop_cycle)) > 1) {
+    lmm <- lmer(value ~ 0 + crop_cycle + (1|Clone) + (1|Row) + (1|Column), data = dat,
+                control = lmerControl(optimizer = 'bobyqa'))
+    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
+    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup)
+  } else {
+    lmm <- lmer(value ~ 1 + (1|Clone) + (1|Row) + (1|Column), data = dat,
+                control = lmerControl(optimizer = 'bobyqa'))
+    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
+    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup, as.numeric(NA), as.numeric(NA))
+  }
+}
+
 # Master GS function ------------------------------------------------------
 
-# GS function. This will do one repetition for one trait and a given value of marker density. Return observed and predicted values.
+# This will do one repetition for one trait and a given value of marker density. Return observed and predicted values.
 gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
   # Get clone ID and trait value for the given crop cycle.
   PD <- PD[trait == trait_to_use, c('Clone', crop_cycle_to_use), with = FALSE]

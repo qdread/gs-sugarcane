@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=do_all_gs
 #SBATCH --ntasks=32
-#SBATCH --mem=16gb
+#SBATCH --mem=32gb
 #SBATCH --partition=medium
 #SBATCH --time=7-00:00:00
 

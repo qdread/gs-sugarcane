@@ -67,21 +67,6 @@ economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
 phenotypes_long <- phenotypes[!crop_cycle %in% 'Ratoonability', mget(c("crop_cycle", "Clone", "Rep", "Row", "Column", physical_traits, economic_traits))] |>
   melt(id.vars = c("crop_cycle", "Clone", "Rep", "Row", "Column"), variable.name = 'trait')
 
-# Function to calculate BLUPs for each trait. If only one crop cycle has that trait, do not fit crop cycle in the model.
-blup_trait <- function(dat) {
-  if (length(unique(dat$crop_cycle)) > 1) {
-    lmm <- lmer(value ~ 0 + crop_cycle + (1|Clone) + (1|Row) + (1|Column), data = dat,
-                control = lmerControl(optimizer = 'bobyqa'))
-    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
-    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup)
-  } else {
-    lmm <- lmer(value ~ 1 + (1|Clone) + (1|Row) + (1|Column), data = dat,
-                control = lmerControl(optimizer = 'bobyqa'))
-    blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
-    data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup, as.numeric(NA), as.numeric(NA))
-  }
-}
-
 # First and second ratoons do not have diameter data. Remove those rows
 phenotypes_long <- phenotypes_long[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon 1_2018', 'Ratoon 2_2019'))]
 
@@ -92,7 +77,6 @@ setnames(pheno_blups, c('trait', 'Clone', 'PlantCane', 'Ratoon1', 'Ratoon2'))
 # Remove the clone checks 
 check_IDs <- c('CP96-1252', 'CP00-1101')
 pheno_blups <- pheno_blups[!Clone %in% check_IDs]
-
 
 # Run GS models -----------------------------------------------------------
 

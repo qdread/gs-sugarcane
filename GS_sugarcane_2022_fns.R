@@ -38,15 +38,19 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
     Y_test <- PD_test[[2]]
     
     # Apply the five models and return the predicted values
-    message('Running rrBLUP (1 of 5)')
+    message('Running rrBLUP (1 of 7)')
     Y_pred_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
-    message('Running ADE (2 of 5)')
+    message('Running ADE (2 of 7)')
     Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
-    message('Running RKHS (3 of 5)')
-    Y_pred_BGLR <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
-    message('Running SVM (4 of 5)')
+    message('Running RKHS (3 of 7)')
+    Y_pred_RKHS <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
+    message('Running BayesA (4 of 7)')
+    Y_pred_BayesA <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesA')
+    message('Running BayesB (5 of 7)')
+    Y_pred_BayesB <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesB')
+    message('Running SVM (6 of 7)')
     Y_pred_SVM <- gs_SVM(Y_train, Y_test, GD_train, GD_test)
-    message('Running RF (5 of 5)')
+    message('Running RF (7 of 7)')
     Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
@@ -147,13 +151,12 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 
 # RKHS model implemented in BGLR package
 
-gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
+gs_RKHS <- function(Y_train, Y_test, GD_train, GD_test) {
   # Generate unique ID for temp files
   UUID <- UUIDgenerate()
 
   # Combine train and test sets into single vector (Y) and matrix (GD)
   Y_comb <- c(Y_train, rep(NA, length(Y_test)))
-  idx_train <- 1:length(Y_train)
   idx_test <- (1:length(Y_test)) + length(Y_train)
   
   GD_comb <- rbind(GD_train, GD_test)
@@ -167,6 +170,27 @@ gs_BGLR <- function(Y_train, Y_test, GD_train, GD_test) {
   return(Y_pred)
 }
 
+
+# Bayes A/B GS function ---------------------------------------------------
+
+# As implemented in BGLR package
+# Specify bayes_model 'BayesA' or 'BayesB'
+gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model) {
+  # Generate unique ID for temp files
+  UUID <- UUIDgenerate()
+  
+  # Combine train and test sets into single vector (Y) and matrix (GD)
+  Y_comb <- c(Y_train, rep(NA, length(Y_test)))
+  idx_test <- (1:length(Y_test)) + length(Y_train)
+  
+  GD_comb <- rbind(GD_train, GD_test)
+  
+  ETA_Bayes <-list(list(X = GD_comb, model = bayes_model)) 
+  fit_Bayes <- BGLR(y = Y_comb, ETA = ETA_Bayes, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
+  
+  Y_pred = fit_Bayes$yHat[idx_test]
+  return(Y_pred)
+}
 
 # SVM GS function ---------------------------------------------------------
 

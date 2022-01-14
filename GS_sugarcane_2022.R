@@ -22,8 +22,9 @@ library(sommer) # Note: some functions in rrBLUP have the same name as some in t
 source('GS_sugarcane_2022_fns.R') # Load needed functions
 
 # Set up parallel processing
-options(mc.cores = 16)
-plan(multicore(workers = 16))
+n_tasks <- as.numeric(Sys.getenv('SLURM_NTASKS'))
+options(mc.cores = n_tasks)
+plan(multicore(workers = n_tasks))
 
 # Read genotype and phenotype data ----------------------------------------
 

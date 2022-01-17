@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=do_all_gs
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=16
-#SBATCH --mem=32gb
+#SBATCH --mem=64gb
 #SBATCH --partition=medium
 #SBATCH --time=7-00:00:00
 

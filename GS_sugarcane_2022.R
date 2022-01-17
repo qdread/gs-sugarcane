@@ -11,6 +11,7 @@ library(purrr)
 library(furrr)
 library(glue)
 library(lme4)
+library(Matrix)
 library(uuid)
 library(rrBLUP)
 library(kernlab)
@@ -22,10 +23,11 @@ library(sommer) # Note: some functions in rrBLUP have the same name as some in t
 source('GS_sugarcane_2022_fns.R') # Load needed functions
 
 # Set up parallel processing
-n_tasks <- 32
-options(mc.cores = 32)
+options(mc.cores = 64)
 plan(
   list(tweak(multicore, workers = 16),
+       tweak(multicore, workers = 16),
+       tweak(multicore, workers = 16),
        tweak(multicore, workers = 16))
 )
 
@@ -110,7 +112,7 @@ gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
   pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
   fwrite(pred_metrics, glue('project/output/metrics_{trait}_{crop_cycle}_{iter}.csv'))
   return(pred_metrics)
-}, .options = furrr_options(seed = 777))
+}, .options = furrr_options(seed = 999))
 
 combos[, metrics := gs_pred_metrics]
 results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle))

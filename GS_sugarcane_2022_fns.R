@@ -36,7 +36,13 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
   }
   
   # Assign individuals to cross-validation folds
-  fold_ids <- sample(rep_len(1:k, nrow(PD)))
+  # Check whether all training sets are full rank matrices to avoid error
+  matrix_ranks <- rep(0, k)
+  training_set_sizes <- table(fold_ids)
+  while (any(matrix_ranks < training_set_sizes)) {
+    fold_ids <- sample(rep_len(1:k, nrow(PD)))
+    matrix_ranks <- map_int(1:k, ~ rankMatrix(GD[fold_ids == ., ]))
+  }
   
   pred_values <- list()
   

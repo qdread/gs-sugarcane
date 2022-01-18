@@ -79,7 +79,7 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
     Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
-    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, SVM = Y_pred_SVM, RF = Y_pred_RF)
+    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, BayesA = Y_pred_BayesA, BayesB = Y_pred_BayesB, SVM = Y_pred_SVM, RF = Y_pred_RF)
   }
   
   # Combine observed and predicted values for the folds

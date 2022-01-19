@@ -63,23 +63,27 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
     Y_test <- PD_test[[2]]
     
     # Apply the five models and return the predicted values
-    message('Running rrBLUP (1 of 7)')
+    message('Running rrBLUP (1 of 9)')
     Y_pred_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
-    message('Running ADE (2 of 7)')
+    message('Running ADE (2 of 9)')
     Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
-    message('Running RKHS (3 of 7)')
+    message('Running RKHS (3 of 9)')
     Y_pred_RKHS <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
-    message('Running BayesA (4 of 7)')
+    message('Running BayesA (4 of 9)')
     Y_pred_BayesA <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesA')
-    message('Running BayesB (5 of 7)')
+    message('Running BayesB (5 of 9)')
     Y_pred_BayesB <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesB')
-    message('Running SVM (6 of 7)')
-    Y_pred_SVM <- gs_SVM(Y_train, Y_test, GD_train, GD_test)
-    message('Running RF (7 of 7)')
+    message('Running SVM radial (6 of 9)')
+    Y_pred_SVMradial <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'radial')
+    message('Running SVM linear (7 of 9)')
+    Y_pred_SVMlinear <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'linear')
+    message('Running SVM sigmoid (8 of 9)')
+    Y_pred_SVMsigmoid <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'sigmoid')
+    message('Running RF (9 of 9)')
     Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
     
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
-    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, BayesA = Y_pred_BayesA, BayesB = Y_pred_BayesB, SVM = Y_pred_SVM, RF = Y_pred_RF)
+    pred_values[[fold]] <- data.frame(fold = fold, Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, BayesA = Y_pred_BayesA, BayesB = Y_pred_BayesB, SVMradial = Y_pred_SVMradial, SVMlinear = Y_pred_SVMlinear, SVMsigmoid = Y_pred_SVMsigmoid, RF = Y_pred_RF)
   }
   
   # Combine observed and predicted values for the folds
@@ -153,7 +157,7 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   
   GD_comb <- rbind(GD_train, GD_test) - 1 # adjust to -1, 0, 1 values
   
-  # FIXME the argument shrink = TRUE was removed because it is not in the current up to date sommer package. Check if this is OK.
+  # Note: The argument shrink = TRUE was removed because it is not in the current up to date sommer package.
   A <- A.mat(GD_comb) # additive relationship matrix 
   D <- D.mat(GD_comb) # dominance
   E <- E.mat(GD_comb) # epistasis
@@ -219,9 +223,9 @@ gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model) {
 
 # SVM GS function ---------------------------------------------------------
 
-gs_SVM <- function(Y_train, Y_test, GD_train, GD_test) {
-  #FIXME Any tuning parameters?
-  svm.model <- svm(GD_train, Y_train, type = 'eps-regression', kernel = 'radial', scale = FALSE)
+gs_SVM <- function(Y_train, Y_test, GD_train, GD_test, kernel_type) {
+  
+  svm.model <- svm(GD_train, Y_train, type = 'eps-regression', kernel = kernel_type, scale = FALSE)
   Y_pred <- predict(svm.model, GD_test, decision.values = TRUE)
   
   return(Y_pred)
@@ -240,11 +244,10 @@ gs_RF <- function(Y_train, Y_test, GD_train, GD_test) {
   GD_train <- GD_train[!na_idx, ] - 1
   GD_test <- GD_test - 1
   
-  # FIXME Grid search tuning parameters?
-  rf <- randomForest(GD_train, Y_train, ntree=5000, mtry=floor(sqrt(ncol(GD_train))), 
-                     replace=TRUE, classwt=NULL, nodesize = 1, importance=FALSE, localImp=FALSE, nPerm=1, norm.votes=TRUE, do.trace=FALSE)
+  rf <- randomForest(GD_train, Y_train, ntree = 5000, mtry = floor(sqrt(ncol(GD_train))), nodesize = 1, nPerm = 1,
+                     replace = TRUE, classwt = NULL, importance = FALSE, localImp = FALSE, norm.votes = TRUE, do.trace = FALSE)
   
-  Y_pred = predict(rf, newdata=GD_test)
+  Y_pred <- predict(rf, newdata = GD_test)
   return(Y_pred)
 }
 

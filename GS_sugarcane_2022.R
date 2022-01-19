@@ -22,14 +22,16 @@ library(sommer) # Note: some functions in rrBLUP have the same name as some in t
 
 source('GS_sugarcane_2022_fns.R') # Load needed functions
 
-# Set up parallel processing
-options(mc.cores = 64)
-plan(
-  list(tweak(multicore, workers = 16),
-       tweak(multicore, workers = 16),
-       tweak(multicore, workers = 16),
-       tweak(multicore, workers = 16))
-)
+# Set up parallel processing if this code is running on ceres
+if (grepl('ceres', system2('hostname', stdout = TRUE))) {
+  options(mc.cores = 64)
+  plan(
+    list(tweak(multicore, workers = 16),
+         tweak(multicore, workers = 16),
+         tweak(multicore, workers = 16),
+         tweak(multicore, workers = 16))
+  )
+}
 
 # Read genotype and phenotype data ----------------------------------------
 
@@ -85,17 +87,15 @@ pheno_blups <- pheno_blups[!Clone %in% check_IDs]
 
 # Run GS models -----------------------------------------------------------
 
-n_iter <- 25
+n_iter <- 5 # Can be increased later.
 n_folds <- 5
 
 # Repeat for each:
 # - crop cycle (plant cane, 1st ratoon, 2nd ratoon)
 # - trait
-# - training set size c(0.20, 0.30, 0.50, 0.60, 0.80, 0.90). Instead for now I will just do 5fold CV? 
-# - marker density c(0.20, 0.30, 0.50, 0.60, 0.80, 0.90, 1)
-# - models (5 models, same as those done by Marcus)
+# - model
 
-# Then in each case do 25 iterations.
+# Then in each case do n_iter iterations, and in each iteration the n_folds CV folds.
 
 # For now, just do iterations, models, crop cycles, and traits. Do not vary training size or marker density.
 
@@ -118,7 +118,7 @@ gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
     pred_metrics <- fread(metric_file_name)
   }
   return(pred_metrics)
-}, .options = furrr_options(seed = 999))
+}, .options = furrr_options(seed = 919))
 
 combos[, metrics := gs_pred_metrics]
 results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle))

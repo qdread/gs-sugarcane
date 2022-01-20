@@ -24,13 +24,7 @@ source('GS_sugarcane_2022_fns.R') # Load needed functions
 
 # Set up parallel processing if this code is running on ceres
 if (grepl('ceres', system2('hostname', stdout = TRUE))) {
-  options(mc.cores = 64)
-  plan(
-    list(tweak(multicore, workers = 16),
-         tweak(multicore, workers = 16),
-         tweak(multicore, workers = 16),
-         tweak(multicore, workers = 16))
-  )
+  plan(multicore(workers = length(availableWorkers())))
 }
 
 # Read genotype and phenotype data ----------------------------------------

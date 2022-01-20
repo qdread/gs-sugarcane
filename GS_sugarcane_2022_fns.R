@@ -217,7 +217,7 @@ gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model) {
   ETA_Bayes <-list(list(X = GD_comb, model = bayes_model)) 
   fit_Bayes <- BGLR(y = Y_comb, ETA = ETA_Bayes, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
   
-  Y_pred = fit_Bayes$yHat[idx_test]
+  Y_pred <- fit_Bayes$yHat[idx_test]
   return(Y_pred)
 }
 

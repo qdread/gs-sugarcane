@@ -36,6 +36,10 @@ genotypes <- fread('project/data/sugarcane.10501.SNPs.432.Inds.CloneNames.hmp.tx
 pheno_file <- 'project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx'
 sheet_names <- excel_sheets(pheno_file)
 phenotype_sheets <- map(sheet_names, ~ cbind(crop_cycle = ., read_xlsx(pheno_file, sheet = ., na = c('.', '-', '-!'))))
+
+# Correct column name, changing Diam to diam (bugfix)
+for (i in 1:length(phenotype_sheets)) names(phenotype_sheets[[i]])[names(phenotype_sheets[[i]]) == 'Diam'] <- 'diam'
+
 phenotypes <- rbindlist(phenotype_sheets, fill = TRUE)
 
 id_columns <- c("rs.", "alleles", "chrom", "pos", "strand", "assembly.", "center", "protLSID", "assayLSID", "panelLSID", "QCcode")
@@ -68,9 +72,6 @@ economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
 phenotypes_long <- phenotypes[!crop_cycle %in% 'Ratoonability', mget(c("crop_cycle", "Clone", "Rep", "Row", "Column", physical_traits, economic_traits))] |>
   melt(id.vars = c("crop_cycle", "Clone", "Rep", "Row", "Column"), variable.name = 'trait')
 
-# First and second ratoons do not have diameter data. Remove those rows
-phenotypes_long <- phenotypes_long[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon 1_2018', 'Ratoon 2_2019'))]
-
 # Get the BLUPs!
 pheno_blups <- phenotypes_long[, blup_trait(.SD), by = trait]
 setnames(pheno_blups, c('trait', 'Clone', 'PlantCane', 'Ratoon1', 'Ratoon2'))
@@ -94,9 +95,6 @@ n_folds <- 5
 # For now, just do iterations, models, crop cycles, and traits. Do not vary training size or marker density.
 
 combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('PlantCane', 'Ratoon1', 'Ratoon2'))
-
-# 1st and 2nd ratoons do not have diameter data so remove those from the combinations
-combos <- combos[!(trait %in% 'diam' & crop_cycle %in% c('Ratoon1', 'Ratoon2'))]
 
 # Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.
 # If the prediction metric file already exists, skip that iteration (this allows the script to be rerun)

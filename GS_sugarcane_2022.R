@@ -82,7 +82,7 @@ pheno_blups <- pheno_blups[!Clone %in% check_IDs]
 
 # Run GS models -----------------------------------------------------------
 
-n_iter <- 5 # Can be increased later.
+n_iter <- 25 
 n_folds <- 5
 
 # Repeat for each:

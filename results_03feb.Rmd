@@ -1,0 +1,374 @@
+---
+title: "Results of GS models, version 2.1"
+author: "Quentin D. Read"
+date: "2/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+## Change log
+
+- 04 February: Present results for all 25 iterations for GS. Include heritability.
+- 24 January: Fixed bug where diameter was left out for ratoon crops. Also make plots of the correlation coefficient `r`, and set axes to be the same across all plots of each metric for better comparing.
+- 22 January: First version
+
+## Summary
+
+Here is another set of preliminary results, after making changes discussed in the group meeting. The changes are as follows:
+
+- I fit the BLUPs for each genotype for each trait. I did this with the `lmer()` function where crop cycle is a fixed effect, and genotype, row, and column was a random effect (the column BLUPs were zeroed out by the model so there is no column effect but there is a row effect).
+- I added some additional models. See discussion below.
+- I only ran 5 iterations of the five-fold cross-validation per combination of trait and crop cycle so that I could get a decent amount of data to plot for each combination (I can run more later if we decide it is worthwhile to do so).
+
+## Additional models used
+
+I added BayesA and BayesB as implemented by the BGLR package.
+
+I did a very unscientific attempt at looking at whether varying the hyperparameters of the BayesA and BayesB prior distributions would make any difference. It looks like the default hyperparameters work as well as any other choice, at least for the few traits I haphazardly tried.
+
+I also unsystematically looked at a couple of traits to see if altering the tuning parameters of the SVM and RF models makes any difference. I saw very little difference so I decided not to play with the default tuning parameters when running all the traits. However I did see that changing the kernel of the SVM from a radial basis to a linear or sigmoid kernel sometimes did improve the prediction accuracy somewhat. So I decided to fit SVMs with those three different kernels for all the traits. 
+
+So these results include the following:
+
+- 13 traits
+- 3 crop cycles (plant cane, ratoon 1, ratoon 2)
+- 9 models (rrBLUP, ADE, RKHS, BayesA, BayesB, SVM radial kernel, SVM linear kernel, SVM sigmoid kernel, and random forest)
+- 5-fold cross validation for all combinations above
+- 5 iterations of the cross-validation for every combination
+
+Following are the results and any outstanding issues for discussion I could think of.
+
+# Results
+
+In these results, I will give three metrics of accuracy:
+
+- `r` is the correlation between observed and predicted values (we want to maximize this)
+- `CI` is the coincidence index between the top 20% genotypes as predicted by the model, and the top 20% if selected randomly (we want to maximize this. It would be ~17% if the model was no better than random)
+- `RMSE` is the root mean squared prediction error from all the out-of-sample predictions in the cross-validation (we want to minimize this)
+
+I plotted the first two.
+
+```{r read data}
+library(tidyverse)
+library(gt)
+library(readxl)
+library(ggrepel)
+
+metrics <- read_csv('project/output/all_metrics.csv')
+h2_all_traits <- read_csv('project/output/h2_all_traits.csv')
+
+physical_traits <- c("stkwt_kg", "diam", "Brix", "Fiber", "Pol", "Sucrose", "Purity", "stalk_ha")
+economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
+
+theme_set(theme_bw() +
+            theme(strip.background = element_blank(),
+                  legend.position = 'bottom'))
+
+fill_scale <- scale_fill_brewer(palette = 'Dark2')
+null_line <- geom_hline(yintercept = 0.167, size = 1.2, linetype = 'dashed')
+null_line2 <- geom_hline(yintercept = 0, size = 1.2, linetype = 'dashed')
+```
+
+## Performance of the models for each trait and crop cycle
+
+### Coincidence Index (CI)
+
+Here I plot the CI. I put a horizontal line at the null expectation which indicates that the model does no better than random. I separated out the plots by crop cycle and by physical vs. economic traits. The traits that seem to be better predicted are diameter (this was only measured for plant cane in 2017 and not afterward), stalks per hectare, and stalk weight. All those are basically related to the physical structure of the cane and not anything to do with sugar content itself -- the sugar content traits are not very well predicted.
+
+### Physical traits
+
+```{r}
+ci_y_scale <- scale_y_continuous(limits = range(metrics$CI))
+
+ggplot(metrics %>% filter(crop_cycle %in% 'PlantCane', trait %in% physical_traits), 
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: physical traits', 'Crop cycle: plant cane (2017)') +
+  fill_scale + null_line + ci_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon1', trait %in% physical_traits),
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: physical traits', 'Crop cycle: first ratoon (2018)') +
+  fill_scale + null_line + ci_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon2', trait %in% physical_traits), 
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: physical traits', 'Crop cycle: second ratoon (2019)') +
+  fill_scale + null_line + ci_y_scale
+```
+
+### Economic traits
+
+Overall the CI for the economic traits is lower than for the physical traits with essentially no values above 0.3 for any trait across all crop cycles.
+
+```{r}
+ggplot(metrics %>% filter(crop_cycle %in% 'PlantCane', trait %in% economic_traits), 
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: economic traits', 'Crop cycle: plant cane (2017)') +
+  fill_scale + null_line + ci_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon1', trait %in% economic_traits),
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: economic traits', 'Crop cycle: first ratoon (2018)') +
+  fill_scale + null_line + ci_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon2', trait %in% economic_traits), 
+       aes(x = trait, y = CI, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('CI: economic traits', 'Crop cycle: second ratoon (2019)') +
+  fill_scale + null_line + ci_y_scale
+```
+
+## Correlation coefficient (r)
+
+The following plots show a different metric of model performance: the correlation coefficient `r` between the observed and predicted values. In this case, the expectation for a completely random prediction would be $r = 0$ so I put a dashed line at zero for these plots. Higher correlation means better accuracy; negative means even worse than random.
+
+### Physical traits
+
+We see basically the same patterns as with CI, but with less variability among the different runs (iterations).
+
+```{r}
+r_y_scale <- scale_y_continuous(limits = range(metrics$r))
+
+ggplot(metrics %>% filter(crop_cycle %in% 'PlantCane', trait %in% physical_traits), 
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: physical traits', 'Crop cycle: plant cane (2017)') +
+  fill_scale + null_line2 + r_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon1', trait %in% physical_traits),
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: physical traits', 'Crop cycle: first ratoon (2018)') +
+  fill_scale + null_line2 + r_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon2', trait %in% physical_traits), 
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: physical traits', 'Crop cycle: second ratoon (2019)') +
+  fill_scale + null_line2 + r_y_scale
+```
+
+### Economic traits
+
+```{r}
+ggplot(metrics %>% filter(crop_cycle %in% 'PlantCane', trait %in% economic_traits), 
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: economic traits', 'Crop cycle: plant cane (2017)') +
+  fill_scale + null_line2 + r_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon1', trait %in% economic_traits),
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: economic traits', 'Crop cycle: first ratoon (2018)') +
+  fill_scale + null_line2 + r_y_scale
+
+ggplot(metrics %>% filter(crop_cycle %in% 'Ratoon2', trait %in% economic_traits), 
+       aes(x = trait, y = r, fill = model, group = interaction(trait, model))) +
+  geom_boxplot(position = 'dodge') +
+  ggtitle('Observed-predicted correlation: economic traits', 'Crop cycle: second ratoon (2019)') +
+  fill_scale + null_line2 + r_y_scale
+```
+
+## Ranking the models
+
+Here are tables averaging the prediction accuracy metrics by crop cycle, and then by trait. For each case, the models with better performance (highest `r`, highest `CI`, or lowest `RMSE`) are highlighted, where darker red color indicates better performance. 
+
+Overall it looks like RKHS and the Bayesian models perform best, and SVM tends to do pretty well too, but for some individual traits other models do better. The metrics generally agree.
+
+### Tables by crop cycle
+
+```{r, results = 'asis'}
+table_list <- metrics %>%
+  group_by(crop_cycle, model) %>%
+  summarize(across(c(r, CI, RMSE), mean)) %>%
+  group_split(.keep = FALSE)
+
+color_vec <- rep(c('black','red'), c(7, 2))
+
+walk2(table_list, c('Plant Cane 2017', 'First Ratoon 2018', 'Second Ratoon 2019'), 
+     ~ print(gt(data = .x) %>%
+       tab_header(title = .y) %>%     
+       fmt_number(columns = c(r, CI, RMSE), decimals = 3) %>%
+       data_color(
+         columns = c(r, CI),
+         colors = scales::col_bin(palette = 'Reds', domain = NULL)
+       ) %>%
+       data_color(
+         columns = c(RMSE),
+         colors = scales::col_bin(palette = 'Reds', reverse = TRUE, domain = NULL)
+       ))
+)
+```
+
+### Tables by trait
+
+```{r, results = 'asis'}
+table_list <- metrics %>%
+  group_by(trait, model) %>%
+  summarize(across(c(r, CI, RMSE), mean)) %>%
+  group_split()
+
+walk(table_list, 
+     ~ print(gt(data = .x %>% select(-trait)) %>%
+       tab_header(title = .x$trait[1]) %>%     
+       fmt_number(columns = c(r, CI, RMSE), decimals = 3) %>%
+       data_color(
+         columns = c(r, CI),
+         colors = scales::col_bin(palette = 'Reds', domain = NULL)
+       ) %>%
+       data_color(
+         columns = c(RMSE),
+         colors = scales::col_bin(palette = 'Reds', domain = NULL, reverse = TRUE)
+       ))
+)
+```
+
+# Heritability
+
+I calculated the narrow-sense and broad-sense heritability for all the traits. I did this individually for each crop cycle using separate mixed models for each combination of trait and crop cycle. Then I did it collectively across crop cycles using a single mixed model for each trait with crop cycle as fixed effect. Here are tables of the results for narrow-sense and broad-sense heritability. To me it seems like the traits with higher heritability tend to be the ones with better GS performance which makes sense.
+
+```{r}
+h2_all <- read_csv('project/output/h2_all_traits.csv')
+
+h2_narrow <- h2_all %>% 
+  select(trait, crop_cycle, h2_narrow) %>%
+  pivot_wider(id_cols = trait, names_from = crop_cycle, values_from = h2_narrow)
+
+H2_broad <- h2_all %>% 
+  select(trait, crop_cycle, H2_broad) %>%
+  pivot_wider(id_cols = trait, names_from = crop_cycle, values_from = H2_broad)
+
+gt(h2_narrow) %>%
+  tab_header(title = 'Narrow-sense heritability') %>%
+  fmt_number(columns = 2:5, decimals = 3) %>%
+  data_color(columns = 2:5, colors = scales::col_bin(palette = 'Reds', domain = NULL))
+```
+
+```{r}
+gt(H2_broad) %>%
+  tab_header(title = 'Broad-sense heritability') %>%
+  fmt_number(columns = 2:5, decimals = 3) %>%
+  data_color(columns = 2:5, colors = scales::col_bin(palette = 'Reds', domain = NULL))
+```
+
+
+
+# Visualizing trait variances
+
+In our previous meeting we discussed reasons why the performance of the models might have been a little worse than what was in the literature from sugarcane. Some sources in the lit indicate $r$ between 0.25 and 0.45 is expected, where we have around 0.15 to 0.3, with only a few traits even getting close to 0.4. To see whether this has any relationship with overall variability in the traits, here are some visualizations of trait variability.
+
+```{r, echo = FALSE}
+pheno_file <- 'project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx'
+sheet_names <- excel_sheets(pheno_file)
+phenotype_sheets <- map(sheet_names[1:3], ~ cbind(crop_cycle = ., read_xlsx(pheno_file, sheet = ., na = c('.', '-', '-!'))))
+
+# Clean up so they can be concatenated
+names(phenotype_sheets[[2]])[10] <- 'diam'
+names(phenotype_sheets[[3]])[10] <- 'diam'
+phenotype_sheets[[1]]$Crop <- as.character(phenotype_sheets[[1]]$Crop)
+phenotype_sheets[[2]]$Crop <- as.character(phenotype_sheets[[2]]$Crop)
+
+phenotypes <- bind_rows(phenotype_sheets)
+```
+
+First I found the coefficient of variation of each trait, both for each crop cycle individually and combined. 
+
+```{r}
+CV <- function(x) sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)
+
+CV_bycycle <- phenotypes %>%
+  group_by(crop_cycle) %>%
+  summarize(across(all_of(c(physical_traits, economic_traits)), CV))
+
+CV_combined <- phenotypes %>%
+  summarize(across(all_of(c(physical_traits, economic_traits)), CV))
+
+CV_data <- bind_rows(
+  cbind(crop_cycle = 'combined', CV_combined),
+  CV_bycycle
+)
+```
+
+In the table of CVs below, it looks like diameter, Brix and purity have the lowest CVs overall. Some of the economic traits are very variable but TRS and CRS are not. It does not look like there is really that much correlation between prediction performance and CV of the trait.
+
+```{r}
+CV_data %>% 
+  pivot_longer(-crop_cycle, names_to = 'trait') %>% 
+  pivot_wider(id_cols=trait, names_from = crop_cycle) %>%
+  gt() %>%
+  fmt_number(columns = 2:5, decimals = 3) %>%
+  data_color(
+         columns = 2:5,
+         colors = scales::col_bin(palette = 'Reds', domain = NULL)
+       )
+
+```
+
+Let's also plot the trait distributions just to take a look.
+
+```{r, results = 'asis', fig.show = 'hold', out.width = '50%'}
+walk(c(physical_traits, economic_traits), ~
+      print(
+        ggplot(phenotypes, aes_string(x = ., fill = 'crop_cycle')) +
+          geom_density(alpha = 0.6) +
+          scale_fill_viridis_d(name = 'Crop cycle') +
+          scale_y_continuous(expand = expansion(mult = c(0, 0.02)))
+      ))
+```
+
+Finally, let's just plot the average predictive performance (across all crop cycles and all models) of each trait using the $r$ metric against the narrow-sense heritability and against the CV of each trait, out of curiosity to see if any relationship is apparent.
+
+Generally we see that contrary to what I expected, there really isn't much relationship between narrow-sense heritability and model performance. Stalk weight and diameter do have fairly high heritability and good performance, but there are traits with even higher heritability that have poor performance. For CV, we do see somewhat of the expected negative relationship where it is easier to predict traits with lower CV. Again in that case stalk weight and diameter are outliers with unexpectedly better performance than you would think just from looking at their CV values.
+
+
+```{r}
+avg_r <- metrics %>%
+  group_by(trait) %>%
+  summarize(r = mean(r))
+
+CV_comb <- data.frame(trait = names(CV_data)[-1],
+                      CV = unlist(CV_data[1, ][, -1]))
+
+dat <- h2_narrow %>%
+  select(trait, combined) %>%
+  rename(h2_narrow = combined) %>%
+  left_join(avg_r) %>%
+  left_join(CV_comb)
+
+ggplot(dat, aes(x = h2_narrow, y = r, label = trait)) +
+  geom_point() +
+  geom_text_repel(alpha = 0.6) +
+  labs(x = 'Narrow-sense heritability', y = 'Prediction performance')
+
+ggplot(dat, aes(x = CV, y = r, label = trait)) +
+  geom_point() +
+  geom_text_repel(alpha = 0.6) +
+  labs(x = 'Trait coefficient of variation', y = 'Prediction performance')
+```
+
+
+
+# Issues for potential discussion
+
+These are new ones for this version:
+
+- Is it necessary to do any other follow-up analyses, for example look into other things we might use to determine why performance was good or bad in a particular case?
+- Are there better figures we can make? Now that there are 9 models per trait the boxplots are very crowded.
+
+These are old ones from the previous version of this document:
+
+- In the previous preliminary results I shared, for some reason the predictions were better for ratoon 1 than for the other two crop cycles. I think this was just a chance result, because now we see the predictions are roughly the same quality for all the crop cycles.
+- The prediction accuracy is not really that different between the different models. It clearly is much more a function of what trait is being predicted. If the trait has more signal from the genotype, all the models do better.
+- Occasionally, for some traits there will be one or two models that perform substantially worse, but there is never any case where one model does substantially better than all the others.
+- The RKHS, BayesA, and BayesB seem to outperform the other models slightly. This is probably because Gustavo de los Campos is a genius and also because the models implemented in BGLR are somehow optimized for genomic selection in graminoid crops, maybe? That said, the SVM models are not far behind.
+- Using a linear kernel for the SVM looks like a better choice in most cases, which makes sense to me because it is probably simpler and less likely to overfit.
+

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gs_md
+#SBATCH --job-name=gs_ts
 #SBATCH --ntasks=64
 #SBATCH --mem=80gb
 #SBATCH --partition=medium
@@ -7,4 +7,4 @@
 
 cd /home/quentin.read/GitHub/gs-sugarcane
 module load r/4.1.2
-Rscript2 GS_sugarcane_2022_markerdensity.R
+Rscript2 GS_sugarcane_2022_trainingsize.R

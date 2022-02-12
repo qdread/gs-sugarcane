@@ -87,6 +87,71 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density) {
 }
 
 
+# Master GS function: single train-test split -----------------------------
+
+# Instead of doing k-fold CV in this version of the function, instead do a single train-test split. Proportion p of the data is the training set
+gs_all_onesplit <- function(GD, PD, crop_cycle_to_use, trait_to_use, p, marker_density) {
+  # Get clone ID and trait value for the given crop cycle.
+  PD <- PD[trait == trait_to_use, c('Clone', crop_cycle_to_use), with = FALSE]
+  
+  # Subsample markers to given density
+  if (marker_density < 1) {
+    n_markers <- floor(ncol(GD) * marker_density)
+    GD <- GD[, sample(ncol(GD), n_markers, replace = FALSE)]
+  }
+  
+  # Assign individuals to training or test data
+  # Check whether training set is a full rank matrix to avoid error
+  rank_deficient <- TRUE
+  n_train <- floor(p * nrow(PD))
+  n_test <- nrow(PD) - n_train
+  while (rank_deficient) {
+    fold_ids <- sample(rep(1:2, c(n_train, n_test)))
+    matrix_rank <- rankMatrix(GD[fold_ids == 1, ])
+    rank_deficient <- matrix_rank < n_train
+  }
+  
+  # Create training and test set for GD and PD
+  train_clones <- PD$Clone[fold_ids == 1]
+  test_clones <- PD$Clone[fold_ids == 2]
+  
+  PD_train <- PD[Clone %in% train_clones]
+  PD_test <- PD[!Clone %in% train_clones]
+  
+  GD_train <- GD[match(PD_train$Clone, dimnames(GD)[[1]]), ]
+  GD_test <- GD[match(PD_test$Clone, dimnames(GD)[[1]]), ]
+  
+  Y_train <- PD_train[[2]]
+  Y_test <- PD_test[[2]]
+  
+  # Apply the five models and return the predicted values
+  message('Running rrBLUP (1 of 9)')
+  Y_pred_rrBLUP <- gs_rrBLUP(Y_train, Y_test, GD_train, GD_test)
+  message('Running ADE (2 of 9)')
+  Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
+  message('Running RKHS (3 of 9)')
+  Y_pred_RKHS <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
+  message('Running BayesA (4 of 9)')
+  Y_pred_BayesA <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesA')
+  message('Running BayesB (5 of 9)')
+  Y_pred_BayesB <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesB')
+  message('Running SVM radial (6 of 9)')
+  Y_pred_SVMradial <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'radial')
+  message('Running SVM linear (7 of 9)')
+  Y_pred_SVMlinear <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'linear')
+  message('Running SVM sigmoid (8 of 9)')
+  Y_pred_SVMsigmoid <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'sigmoid')
+  message('Running RF (9 of 9)')
+  Y_pred_RF <- gs_RF(Y_train, Y_test, GD_train, GD_test)
+  
+  # Store results in data frame with observed phenotype and 1 column for each model's prediction
+  pred_values <- data.frame(Clone = PD_test[['Clone']], Y_obs = Y_test, rrBLUP = Y_pred_rrBLUP, ADE = Y_pred_ADE, RKHS = Y_pred_RKHS, BayesA = Y_pred_BayesA, BayesB = Y_pred_BayesB, SVMradial = Y_pred_SVMradial, SVMlinear = Y_pred_SVMlinear, SVMsigmoid = Y_pred_SVMsigmoid, RF = Y_pred_RF) |>
+    setDT() |>
+    melt(id.vars = c('Clone', 'Y_obs'), variable.name = 'model', value.name = 'Y_pred')
+  
+  return(pred_values)
+}
+
 # Function to calculate prediction accuracy metrics -----------------------
 
 # This function will take the observed and predicted trait (Y) values from any model and return the full set of prediction accuracy metrics

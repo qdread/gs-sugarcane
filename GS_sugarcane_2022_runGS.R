@@ -17,8 +17,6 @@ n_folds <- 5
 
 # Then in each case do n_iter iterations, and in each iteration the n_folds CV folds.
 
-# For now, just do iterations, models, crop cycles, and traits. Do not vary training size or marker density.
-
 combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('PlantCane', 'Ratoon1', 'Ratoon2'))
 
 # Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.

@@ -31,6 +31,8 @@ library(ggrepel)
 
 metrics_ts <- read_csv('project/output/TS_all_metrics.csv') %>%
   filter(!model %in% c('ADE', 'SVMradial', 'SVMsigmoid'))
+metrics_md <- read_csv('project/output/metrics_MD_16feb2022.csv') %>%
+  filter(!model %in% c('ADE', 'SVMradial', 'SVMsigmoid'))
 
 physical_traits <- c("stkwt_kg", "diam", "Brix", "Fiber", "Pol", "Sucrose", "Purity", "stalk_ha")
 economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
@@ -46,6 +48,7 @@ color_scale <- scale_color_brewer(palette = 'Dark2')
 null_line_CI <- geom_hline(yintercept = 0.167, size = 1.2, linetype = 'dashed')
 null_line_r <- geom_hline(yintercept = 0, size = 1.2, linetype = 'dashed')
 x_scale_ts <- scale_x_continuous(name = 'training set', breaks = c(0.2, 0.3, 0.5, 0.6, 0.8, 0.9), labels = scales::percent)
+x_scale_md <- scale_x_continuous(name = 'marker density', breaks = c(0.2, 0.3, 0.5, 0.6, 0.8, 0.9), labels = scales::percent)
 ```
 
 Here are some plots of the prediction accuracy $r$ (observed versus predicted correlation coefficient) as training size increases, by model, crop cycle, and trait. Median, 1/9, and 8/9 quantiles are shown (in other words the next-lowest and next-highest values from each set of iterations bcause there are 10).
@@ -125,3 +128,81 @@ ggplot(quantiles_ts %>% filter(trait %in% economic_traits, metric %in% 'CI'), ae
   ggtitle('Coincidence index with increasing training set proportion', 'economic traits')
 ```
 
+## Marker density results
+
+*note*: as of today (16 Feb), the marker density code is still running but about 90% of it is done so I went ahead and made the plots. Later I will update when the remaining code finishes running.
+
+The plots are the same format as the training size plots. Again, as in the case of training size I see a weak but positive trend.
+
+```{r}
+qprobs <- c(1/9, 0.5, 8/9)
+
+quantiles_md <- metrics_md %>%
+  pivot_longer(cols = r:RMSE, names_to = 'metric', values_to = 'value') %>%
+  group_by(trait, crop_cycle, marker_dens, model, metric) %>%
+  summarize(q = qprobs, v = quantile(value, probs = qprobs, na.rm = TRUE)) %>%
+  mutate(q = round(q, 2)) %>%
+  pivot_wider(id_cols = trait:metric, names_from = q, names_prefix = 'q', values_from = v)
+
+r_range <- quantiles_md %>%
+  ungroup %>%
+  filter(metric %in% 'r') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_r <- scale_y_continuous(name = 'r', limits = r_range)
+
+ci_range <- quantiles_md %>%
+  ungroup %>%
+  filter(metric %in% 'CI') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_ci <- scale_y_continuous(name = 'CI', limits = ci_range)
+
+pd <- position_dodge(width = 0.05)
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% physical_traits, metric %in% 'r'), aes(x = marker_dens, group = interaction(marker_dens, model), y = q0.5, ymin = q0.11, ymax = q0.89)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing marker density', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% economic_traits, metric %in% 'r'), aes(x = marker_dens, group = interaction(marker_dens, model), y = q0.5, ymin = q0.11, ymax = q0.89)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing marker density', 'economic traits')
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% physical_traits, metric %in% 'CI'), aes(x = marker_dens, group = interaction(marker_dens, model), y = q0.5, ymin = q0.11, ymax = q0.89)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing marker density', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% economic_traits, metric %in% 'CI'), aes(x = marker_dens, group = interaction(marker_dens, model), y = q0.5, ymin = q0.11, ymax = q0.89)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing marker density', 'economic traits')
+```

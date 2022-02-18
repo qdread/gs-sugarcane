@@ -25,7 +25,8 @@ gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
   metric_file_name <- glue('project/output/metrics_{trait}_{crop_cycle}_{iter}.csv')
   if (!file.exists(metric_file_name)) {
     pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
-                        crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, marker_density = 1)
+                        crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, 
+                        marker_density = 1, training_size = 1)
     fwrite(pred_vals, glue('project/output/phenotypes_{trait}_{crop_cycle}_{iter}.csv'))
     pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
     fwrite(pred_metrics, metric_file_name)

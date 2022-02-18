@@ -18,16 +18,17 @@ n_folds <- 5
 # Then in each case do n_iter iterations, and in each iteration the n_folds CV folds.
 
 combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_cycle = c('PlantCane', 'Ratoon1', 'Ratoon2'),
-             training_size = c(0.20, 0.30, 0.50, 0.60, 0.80, 0.90))
+             train_size = c(0.20, 0.30, 0.50, 0.60, 0.80, 0.90))
 
 # Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.
 # If the prediction metric file already exists, skip that iteration (this allows the script to be rerun)
-gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle, training_size) {
-  metric_file_name <- glue('project/output/TS/metrics_{trait}_{crop_cycle}_TS{training_size}_{iter}.csv')
+gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle, train_size) {
+  metric_file_name <- glue('project/output/TS/metrics_{trait}_{crop_cycle}_TS{train_size}_{iter}.csv')
   if (!file.exists(metric_file_name)) {
-    pred_vals <- gs_all_onesplit(GD = geno_mat, PD = pheno_blups, 
-                                 crop_cycle_to_use = crop_cycle, trait_to_use = trait, p = training_size, marker_density = 1)
-    fwrite(pred_vals, glue('project/output/TS/phenotypes_{trait}_{crop_cycle}_TS{training_size}_{iter}.csv'))
+    pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
+                        crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds,
+                        training_size = train_size, marker_density = 1)
+    fwrite(pred_vals, glue('project/output/TS/phenotypes_{trait}_{crop_cycle}_TS{train_size}_{iter}.csv'))
     pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
     fwrite(pred_metrics, metric_file_name)
   } else {
@@ -37,6 +38,6 @@ gs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle, trainin
 }, .options = furrr_options(seed = 336))
 
 combos[, metrics := gs_pred_metrics]
-results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle, training_size))
+results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle, train_size))
 
 fwrite(results, 'project/output/TS_all_metrics.csv')

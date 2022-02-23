@@ -7,7 +7,7 @@ source('GS_sugarcane_2022_loaddata.R')
 
 # Run GS models -----------------------------------------------------------
 
-n_iter <- 10
+n_iter <- 25
 n_folds <- 5
 
 # Repeat for each:

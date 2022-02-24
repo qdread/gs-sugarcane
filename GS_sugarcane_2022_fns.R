@@ -6,10 +6,15 @@
 
 # Function to find BLUPs by trait -----------------------------------------
 
-# Crop cycle is fit as a fixed effect.
-blup_trait <- function(dat) {
-    lmm <- lmer(value ~ 0 + crop_cycle + (1|Clone) + (1|Row) + (1|Column), data = dat,
+# Crop cycle is fit as a fixed effect if crop_cycle_fixef = TRUE.
+blup_trait <- function(dat, crop_cycle_fixef = TRUE) {
+    if (crop_cycle_fixef) {
+      lmm <- lmer(value ~ 0 + crop_cycle + (1|Clone) + (1|Row) + (1|Column), data = dat,
                 control = lmerControl(optimizer = 'bobyqa'))
+    } else {
+      lmm <- lmer(value ~ (1|Clone) + (1|Row) + (1|Column), data = dat,
+                  control = lmerControl(optimizer = 'bobyqa'))
+    }
     blup <- outer(ranef(lmm)[['Clone']][['(Intercept)']], fixef(lmm), `+`)
     data.frame(Clone = row.names(ranef(lmm)[['Clone']]), blup)
 }
@@ -97,6 +102,45 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, t
 
   return(pred_values_allfolds)
 }
+
+
+# Trait-assisted GS -------------------------------------------------------
+
+trait_assisted_gs <- function(A, PD, crop_cycle_to_use, trait_to_use, k) {
+  # If crop cycle to predict is Ratoon1, use PlantCane to predict
+  # If crop cycle to predict is Ratoon2, use PlantCane and Ratoon1 to predict
+  PD <- PD[trait == trait_to_use]
+  PD <- dcast(PD, Clone ~ crop_cycle, value.var = 'BLUP')
+  if (crop_cycle_to_use == 'Ratoon1') model_formula <- as.formula(cbind(PlantCane, Ratoon1) ~ 1)
+  if (crop_cycle_to_use == 'Ratoon2') model_formula <- as.formula(cbind(PlantCane, Ratoon1, Ratoon2) ~ 1)
+  
+  # Assign individuals to cross-validation folds
+  fold_ids <- sample(rep_len(1:k, nrow(PD)))
+
+  pred_values <- list()
+  
+  for (fold in 1:k) {
+    message('------\nFold ', fold, '\n------')
+    # Create training and test set for PD
+    train_clones <- PD$Clone[!fold_ids %in% fold]
+    test_clones <- PD$Clone[fold_ids %in% fold]
+    
+    # Sort A matrix to match the PD data
+    A_sorted <- A[PD$Clone, PD$Clone]
+    
+    # Set values for the crop cycle to predict to NA in test set only
+    Y_comb <- rbind(Y_train, Y_test)
+    idx_train <- 1:nrow(Y_train)
+    idx_test <- (1:nrow(Y_test)) + nrow(Y_train)
+    PD[Clone %in% test_clones, (crop_cycle_to_use) := NA]
+    
+    fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A_sorted), rcov = ~ units, data = PD)
+
+    
+  }
+  
+}
+
 
 # Function to calculate prediction accuracy metrics -----------------------
 

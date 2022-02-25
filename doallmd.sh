@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=gs_md
-#SBATCH --ntasks=64
+#SBATCH --ntasks=72
 #SBATCH --mem=80gb
 #SBATCH --partition=medium
 #SBATCH --time=7-00:00:00

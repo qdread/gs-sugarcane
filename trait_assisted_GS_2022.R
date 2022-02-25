@@ -14,6 +14,7 @@ library(readxl)
 library(data.table)
 library(purrr)
 library(rrBLUP) 
+library(sommer)
 library(furrr)
 library(lme4)
 
@@ -41,13 +42,6 @@ phenotypes <- phenotypes[!Clone %in% check_IDs & !crop_cycle %in% 'Ratoonability
 # Find columns representing clones
 id_columns <- c("rs.", "alleles", "chrom", "pos", "strand", "assembly.", "center", "protLSID", "assayLSID", "panelLSID", "QCcode")
 clone_columns <- setdiff(names(genotypes), id_columns)
-
-# One-hot encoding of clone column to use in mixed.solve()
-Z <- dcast(data.table(id = 1:length(clone_columns), Clone = clone_columns), id ~ Clone, length)
-Z[, id := NULL]
-
-# Sort columns of Z to match additive matrix calculated later
-Z <- Z[, ..clone_columns]
 
 # Convert SNPs to numerical format ----------------------------------------
 
@@ -110,16 +104,13 @@ combos <- CJ(iter = 1:n_iter, trait = c(physical_traits, economic_traits), crop_
 # Do the GS. Write observed and predicted phenotypes and prediction accuracy metrics with each iteration.
 # If the prediction metric file already exists, skip that iteration (this allows the script to be rerun)
 traitgs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
-  metric_file_name <- glue('project/output/TGS/metrics_{trait}_{crop_cycle}_{iter}.csv')
+  metric_file_name <- glue('project/output/TAGS/metrics_{trait}_{crop_cycle}_{iter}.csv')
   if (!file.exists(metric_file_name)) {
     pred_vals <- trait_assisted_gs(
-      GD = geno_mat, PD = 
+      GD = geno_mat, PD = pheno_blups, crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds
     )
-    pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
-                        crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, 
-                        marker_density = 1, training_size = 1)
-    fwrite(pred_vals, glue('project/output/TGS/phenotypes_{trait}_{crop_cycle}_{iter}.csv'))
-    pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
+    fwrite(pred_vals, glue('project/output/TAGS/phenotypes_{trait}_{crop_cycle}_{iter}.csv'))
+    pred_metrics <- with(pred_vals, calc_metrics(Y_obs, Y_pred))
     fwrite(pred_metrics, metric_file_name)
   } else {
     pred_metrics <- fread(metric_file_name)
@@ -127,8 +118,8 @@ traitgs_pred_metrics <- future_pmap(combos, function(iter, trait, crop_cycle) {
   return(pred_metrics)
 }, .options = furrr_options(seed = 313))
 
-combos[, metrics := gs_pred_metrics]
+combos[, metrics := traitgs_pred_metrics]
 results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle))
 
-fwrite(results, 'project/output/all_metrics.csv')
+fwrite(results, 'project/output/TAGS_all_metrics.csv')
 

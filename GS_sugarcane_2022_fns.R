@@ -106,7 +106,7 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, t
 
 # Trait-assisted GS -------------------------------------------------------
 
-trait_assisted_gs <- function(A, PD, crop_cycle_to_use, trait_to_use, k) {
+trait_assisted_gs <- function(GD, PD, crop_cycle_to_use, trait_to_use, k) {
   # If crop cycle to predict is Ratoon1, use PlantCane to predict
   # If crop cycle to predict is Ratoon2, use PlantCane and Ratoon1 to predict
   PD <- PD[trait == trait_to_use]
@@ -125,19 +125,30 @@ trait_assisted_gs <- function(A, PD, crop_cycle_to_use, trait_to_use, k) {
     train_clones <- PD$Clone[!fold_ids %in% fold]
     test_clones <- PD$Clone[fold_ids %in% fold]
     
-    # Sort A matrix to match the PD data
-    A_sorted <- A[PD$Clone, PD$Clone]
+    GD_train <- GD[match(train_clones, dimnames(GD)[[1]]), ]
+    GD_test <- GD[match(test_clones, dimnames(GD)[[1]]), ]
+    GD_combined <- rbind(GD_train, GD_test)
+    
+    A <- A.mat(GD_combined)
     
     # Set values for the crop cycle to predict to NA in test set only
-    Y_comb <- rbind(Y_train, Y_test)
-    idx_train <- 1:nrow(Y_train)
-    idx_test <- (1:nrow(Y_test)) + nrow(Y_train)
-    PD[Clone %in% test_clones, (crop_cycle_to_use) := NA]
+    Y_obs <- PD[Clone %in% test_clones][[crop_cycle_to_use]]
+    PD_masked <- copy(PD)
+    PD_masked[Clone %in% test_clones, (crop_cycle_to_use) := NA]
     
-    fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A_sorted), rcov = ~ units, data = PD)
+    # Fit model and extract BLUPs (predicted values) for only the crop cycle to predict and only the test set.
+    fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A), rcov = ~ units, data = PD_masked)
 
+    U <- do.call(cbind, fit_trait_gs$U[[1]])
+    B <- fit_trait_gs$Beta$Estimate
+    Y_pred_all <- sweep(U, 2, B, `+`)
+    Y_pred <- Y_pred_all[test_clones, crop_cycle_to_use]
     
+    # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
+    pred_values[[fold]] <- data.table(fold = fold, Clone = test_clones, Y_obs = Y_obs, Y_pred = Y_pred)
   }
+  
+  do.call(rbind, pred_values)
   
 }
 
@@ -197,8 +208,11 @@ gs_rrBLUP <- function(Y_train, Y_test, GD_train, GD_test) {
 
 gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 
-  # Combine train and test sets into single vector (Y) and matrix (GD)
+  # Combine train and test sets into single data frame with placeholder clone IDs and matrix (GD)
   Y_comb <- c(Y_train, rep(NA, length(Y_test)))
+  ids <- 1:length(Y_comb)
+  PD_comb <- data.frame(idA = 1:length(Y_comb), idD = 1:length(Y_comb), idE = 1:length(Y_comb), Y = Y_comb)
+  
   idx_train <- 1:length(Y_train)
   idx_test <- (1:length(Y_test)) + length(Y_train)
   
@@ -209,16 +223,15 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   D <- D.mat(GD_comb) # dominance
   E <- E.mat(GD_comb) # epistasis
   
-  Z <- diag(length(Y_comb)) 
+  # Fit model and extract BLUPs (predicted values) for the test set.
+  fit_ADE <- mmer(fixed = Y ~ 1, random = ~ vs(idA, Gu = A) + vs(idD, Gu = D) + vs(idE, Gu = E), 
+                  rcov = ~ units, data = PD_comb)
+  
+  U <- with(fit_ADE$U, cbind(`u:idA`[[1]], `u:idD`[[1]], `u:idE`[[1]]))
+  B <- fit_ADE$Beta$Estimate
+  Y_pred_all <- rowSums(U) + B
 
-  rownames(A) <- 1:nrow(A)
-  rownames(D) <- 1:nrow(D)
-  rownames(E) <- 1:nrow(E)
-  
-  ETA_ADE <- list(add=list(Z=Z,K=A), dom=list(Z=Z,K=D), epi=list(Z=Z,K=E))
-  fit_ADE <- MEMMA(Y=Y_comb, ZETA=ETA_ADE) 
-  
-  Y_pred = fit_ADE$fitted.y[idx_test]
+  Y_pred <- Y_pred_all[idx_test]
   return(Y_pred)
 }
 

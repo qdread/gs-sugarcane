@@ -208,15 +208,17 @@ gs_rrBLUP <- function(Y_train, Y_test, GD_train, GD_test) {
 
 gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 
-  # Combine train and test sets into single data frame with placeholder clone IDs and matrix (GD)
+  # Combine train and test sets into single data frame with clone IDs and matrix (GD)
+  GD_comb <- rbind(GD_train, GD_test) - 1 # adjust to -1, 0, 1 values
+  
   Y_comb <- c(Y_train, rep(NA, length(Y_test)))
-  ids <- 1:length(Y_comb)
-  PD_comb <- data.frame(idA = 1:length(Y_comb), idD = 1:length(Y_comb), idE = 1:length(Y_comb), Y = Y_comb)
+  ids <- dimnames(GD_comb)[[1]]
+  PD_comb <- data.frame(idA = ids, idD = ids, idE = ids, Y = Y_comb)
   
   idx_train <- 1:length(Y_train)
   idx_test <- (1:length(Y_test)) + length(Y_train)
   
-  GD_comb <- rbind(GD_train, GD_test) - 1 # adjust to -1, 0, 1 values
+  
   
   # Note: The argument shrink = TRUE was removed because it is not in the current up to date sommer package.
   A <- A.mat(GD_comb) # additive relationship matrix 

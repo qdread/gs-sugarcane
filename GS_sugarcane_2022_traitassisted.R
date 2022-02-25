@@ -17,6 +17,7 @@ library(rrBLUP)
 library(sommer)
 library(furrr)
 library(lme4)
+library(glue)
 
 source('GS_sugarcane_2022_fns.R') # Load needed functions
 

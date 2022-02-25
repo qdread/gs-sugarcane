@@ -137,13 +137,17 @@ trait_assisted_gs <- function(GD, PD, crop_cycle_to_use, trait_to_use, k) {
     PD_masked[Clone %in% test_clones, (crop_cycle_to_use) := NA]
     
     # Fit model and extract BLUPs (predicted values) for only the crop cycle to predict and only the test set.
+    # If model fitting fails due to singular fit, return NAs.
     fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A), rcov = ~ units, data = PD_masked)
-
-    U <- do.call(cbind, fit_trait_gs$U[[1]])
-    B <- fit_trait_gs$Beta$Estimate
-    Y_pred_all <- sweep(U, 2, B, `+`)
-    Y_pred <- Y_pred_all[test_clones, crop_cycle_to_use]
     
+    if (c('U', 'Beta') %in% names(fit_trait_gs)) {
+      U <- do.call(cbind, fit_trait_gs$U[[1]])
+      B <- fit_trait_gs$Beta$Estimate
+      Y_pred_all <- sweep(U, 2, B, `+`)
+      Y_pred <- Y_pred_all[test_clones, crop_cycle_to_use]
+    } else {
+      Y_pred <- rep(NA, length(test_clones))
+    }
     # Store results in data frame with fold ID, observed phenotype, and 1 column for each model's prediction
     pred_values[[fold]] <- data.table(fold = fold, Clone = test_clones, Y_obs = Y_obs, Y_pred = Y_pred)
   }

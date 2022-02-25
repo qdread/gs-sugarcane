@@ -61,9 +61,6 @@ geno_mat <- do.call(cbind, geno_mat) # Transpose the matrix so rows are individu
 # Set row names of genotype matrix to names of clones
 dimnames(geno_mat) <- list(clone_columns, NULL)
 
-# Get additive genetic relationship matrix. Recode to -1, 0, 1 format for rrBLUP by subtracting 1.
-A <- A.mat(geno_mat - 1, n.core=3, shrink=FALSE, return.imputed=FALSE)
-
 # Get BLUPs for each trait and crop cycle ---------------------------------
 
 # Group columns by ID, physical traits, and economic traits

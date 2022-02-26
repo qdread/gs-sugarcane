@@ -38,19 +38,25 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, t
   rank_deficient <- rep(TRUE, k)
   while (any(rank_deficient)) {
     N <- nrow(PD)
-    fold_ids <- sort(rep_len(1:k, N))
-    fold_n <- table(fold_ids)
-    
-    n_train_remove <- floor((1 - training_size) * fold_n)
-    n_train_keep <- fold_n - n_train_remove
-    train_use <- rep(rep(c(TRUE, FALSE), k), c(rbind(n_train_keep, n_train_remove)))
-
-    random_order <- sample(1:N)
-    fold_ids <- fold_ids[random_order]
-    train_use <- train_use[random_order]
-    
-    matrix_ranks <- map_int(1:k, ~ rankMatrix(GD[!fold_ids %in% . & train_use, ]))
-    training_set_sizes <- as.integer(map_dbl(1:k, ~ sum(n_train_keep[-.])))
+    if (training_size < 1) {
+      fold_ids <- sort(rep_len(1:k, N))
+      fold_n <- table(fold_ids)
+      
+      n_train_remove <- floor((1 - training_size) * fold_n)
+      n_train_keep <- fold_n - n_train_remove
+      train_use <- rep(rep(c(TRUE, FALSE), k), c(rbind(n_train_keep, n_train_remove)))
+      
+      random_order <- sample(1:N)
+      fold_ids <- fold_ids[random_order]
+      train_use <- train_use[random_order]
+      
+      matrix_ranks <- map_int(1:k, ~ rankMatrix(GD[!fold_ids %in% . & train_use, ]))
+      training_set_sizes <- as.integer(map_dbl(1:k, ~ sum(n_train_keep[-.])))
+    } else {
+      fold_ids <- sample(rep_len(1:k, N))
+      matrix_ranks <- map_int(1:k, ~ rankMatrix(GD[!fold_ids %in% ., ]))
+      training_set_sizes <- as.integer(nrow(PD) - table(fold_ids))
+    }
     rank_deficient <- matrix_ranks < training_set_sizes
   }
   

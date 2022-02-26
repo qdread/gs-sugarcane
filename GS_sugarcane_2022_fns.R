@@ -54,6 +54,7 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, t
       training_set_sizes <- as.integer(map_dbl(1:k, ~ sum(n_train_keep[-.])))
     } else {
       fold_ids <- sample(rep_len(1:k, N))
+      train_use <- rep(TRUE, N)
       matrix_ranks <- map_int(1:k, ~ rankMatrix(GD[!fold_ids %in% ., ]))
       training_set_sizes <- as.integer(nrow(PD) - table(fold_ids))
     }

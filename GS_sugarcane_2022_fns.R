@@ -140,7 +140,7 @@ trait_assisted_gs <- function(GD, PD, crop_cycle_to_use, trait_to_use, k) {
     # If model fitting fails due to singular fit, return NAs.
     fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A), rcov = ~ units, data = PD_masked)
     
-    if (c('U', 'Beta') %in% names(fit_trait_gs)) {
+    if (all(c('U', 'Beta') %in% names(fit_trait_gs))) {
       U <- do.call(cbind, fit_trait_gs$U[[1]])
       B <- fit_trait_gs$Beta$Estimate
       Y_pred_all <- sweep(U, 2, B, `+`)

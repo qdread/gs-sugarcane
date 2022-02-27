@@ -145,7 +145,7 @@ trait_assisted_gs <- function(GD, PD, crop_cycle_to_use, trait_to_use, k) {
     
     # Fit model and extract BLUPs (predicted values) for only the crop cycle to predict and only the test set.
     # If model fitting fails due to singular fit, return NAs.
-    fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A), rcov = ~ units, data = PD_masked)
+    fit_trait_gs <- mmer(fixed = model_formula, random = ~ vs(Clone, Gu = A), rcov = ~ units, data = PD_masked, verbose = FALSE)
     
     if (all(c('U', 'Beta') %in% names(fit_trait_gs))) {
       U <- do.call(cbind, fit_trait_gs$U[[1]])
@@ -238,13 +238,17 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   
   # Fit model and extract BLUPs (predicted values) for the test set.
   fit_ADE <- mmer(fixed = Y ~ 1, random = ~ vs(idA, Gu = A) + vs(idD, Gu = D) + vs(idE, Gu = E), 
-                  rcov = ~ units, data = PD_comb)
+                  rcov = ~ units, data = PD_comb, verbose = FALSE)
   
-  U <- with(fit_ADE$U, cbind(`u:idA`[[1]], `u:idD`[[1]], `u:idE`[[1]]))
-  B <- fit_ADE$Beta$Estimate
-  Y_pred_all <- rowSums(U) + B
+  if (all(c('U', 'Beta') %in% names(fit_trait_gs))) {
+    U <- with(fit_ADE$U, cbind(`u:idA`[[1]], `u:idD`[[1]], `u:idE`[[1]]))
+    B <- fit_ADE$Beta$Estimate
+    Y_pred_all <- rowSums(U) + B
+    Y_pred <- Y_pred_all[idx_test]
+  } else {
+    Y_pred <- rep(NA, length(idx_test))
+  }
 
-  Y_pred <- Y_pred_all[idx_test]
   return(Y_pred)
 }
 

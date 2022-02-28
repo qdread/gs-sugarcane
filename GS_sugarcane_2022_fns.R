@@ -228,9 +228,7 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   
   idx_train <- 1:length(Y_train)
   idx_test <- (1:length(Y_test)) + length(Y_train)
-  
-  
-  
+
   # Note: The argument shrink = TRUE was removed because it is not in the current up to date sommer package.
   A <- A.mat(GD_comb) # additive relationship matrix 
   D <- D.mat(GD_comb) # dominance

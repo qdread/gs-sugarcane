@@ -22,7 +22,7 @@ blup_trait <- function(dat, crop_cycle_fixef = TRUE) {
 # Master GS function ------------------------------------------------------
 
 # This will do one repetition for one trait and a given value of marker density. Return observed and predicted values.
-gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, training_size) {
+gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, training_size, temp_dir = 'temp') {
   # Get clone ID and trait value for the given crop cycle.
   PD <- PD[trait == trait_to_use, c('Clone', crop_cycle_to_use), with = FALSE]
   
@@ -84,11 +84,11 @@ gs_all <- function(GD, PD, crop_cycle_to_use, trait_to_use, k, marker_density, t
     message('Running ADE (2 of 9)')
     Y_pred_ADE <- gs_ADE(Y_train, Y_test, GD_train, GD_test)
     message('Running RKHS (3 of 9)')
-    Y_pred_RKHS <- gs_RKHS(Y_train, Y_test, GD_train, GD_test)
+    Y_pred_RKHS <- gs_RKHS(Y_train, Y_test, GD_train, GD_test, temp_dir = temp_dir)
     message('Running BayesA (4 of 9)')
-    Y_pred_BayesA <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesA')
+    Y_pred_BayesA <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesA', temp_dir = temp_dir)
     message('Running BayesB (5 of 9)')
-    Y_pred_BayesB <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesB')
+    Y_pred_BayesB <- gs_Bayes(Y_train, Y_test, GD_train, GD_test, bayes_model = 'BayesB', temp_dir = temp_dir)
     message('Running SVM radial (6 of 9)')
     Y_pred_SVMradial <- gs_SVM(Y_train, Y_test, GD_train, GD_test, kernel_type = 'radial')
     message('Running SVM linear (7 of 9)')
@@ -255,7 +255,7 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
 
 # RKHS model implemented in BGLR package
 
-gs_RKHS <- function(Y_train, Y_test, GD_train, GD_test) {
+gs_RKHS <- function(Y_train, Y_test, GD_train, GD_test, temp_dir) {
   # Generate unique ID for temp files
   UUID <- UUIDgenerate()
 
@@ -268,7 +268,7 @@ gs_RKHS <- function(Y_train, Y_test, GD_train, GD_test) {
   M <- tcrossprod(GD_comb)/ncol(GD_comb)
 
   ETA_RKHS <-list(list(K = M, model = 'RKHS')) 
-  fit_RKHS <- BGLR(y = Y_comb, ETA = ETA_RKHS, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
+  fit_RKHS <- BGLR(y = Y_comb, ETA = ETA_RKHS, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('{temp_dir}/{UUID}'))
   
   Y_pred = fit_RKHS$yHat[idx_test]
   return(Y_pred)
@@ -279,7 +279,7 @@ gs_RKHS <- function(Y_train, Y_test, GD_train, GD_test) {
 
 # As implemented in BGLR package
 # Specify bayes_model 'BayesA' or 'BayesB'
-gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model) {
+gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model, temp_dir = 'temp') {
   # Generate unique ID for temp files
   UUID <- UUIDgenerate()
   
@@ -290,7 +290,7 @@ gs_Bayes <- function(Y_train, Y_test, GD_train, GD_test, bayes_model) {
   GD_comb <- rbind(GD_train, GD_test)
   
   ETA_Bayes <-list(list(X = GD_comb, model = bayes_model)) 
-  fit_Bayes <- BGLR(y = Y_comb, ETA = ETA_Bayes, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('temp/{UUID}'))
+  fit_Bayes <- BGLR(y = Y_comb, ETA = ETA_Bayes, response_type = "gaussian", nIter = 12000, burnIn = 2000, verbose = FALSE, saveAt = glue('{temp_dir}/{UUID}'))
   
   Y_pred <- fit_Bayes$yHat[idx_test]
   return(Y_pred)

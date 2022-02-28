@@ -240,7 +240,7 @@ gs_ADE <- function(Y_train, Y_test, GD_train, GD_test) {
   fit_ADE <- mmer(fixed = Y ~ 1, random = ~ vs(idA, Gu = A) + vs(idD, Gu = D) + vs(idE, Gu = E), 
                   rcov = ~ units, data = PD_comb, verbose = FALSE)
   
-  if (all(c('U', 'Beta') %in% names(fit_trait_gs))) {
+  if (all(c('U', 'Beta') %in% names(fit_ADE))) {
     U <- with(fit_ADE$U, cbind(`u:idA`[[1]], `u:idD`[[1]], `u:idE`[[1]]))
     B <- fit_ADE$Beta$Estimate
     Y_pred_all <- rowSums(U) + B

@@ -32,7 +32,7 @@ gs_md_fun <- function(iter, trait, crop_cycle, marker_dens, seed) {
     set.seed(seed)
     pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
                         crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, 
-                        marker_density = marker_dens, training_size = 1)
+                        marker_density = marker_dens, training_size = 1, temp_dir = '/90daydata/shared/qdr/gs_sugarcane/temp')
     fwrite(pred_vals, glue('/project/qdr/gs_sugarcane/output/MD/phenotypes_{trait}_{crop_cycle}_MD{marker_dens}_{iter}.csv'))
     pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
     fwrite(pred_metrics, metric_file_name)
@@ -41,9 +41,9 @@ gs_md_fun <- function(iter, trait, crop_cycle, marker_dens, seed) {
   }
   return(pred_metrics)
 }
-mdjob <- slurm_apply(f = gs_md_fun, params = combos, jobname = 'gsmd_rslurm', nodes = 4, cpus_per_node = 36,
+mdjob <- slurm_apply(f = gs_md_fun, params = combos, jobname = 'gsmd_rslurm', nodes = 6, cpus_per_node = 20,
                     global_objects = c('geno_mat', 'pheno_blups', 'n_folds'),
-                    slurm_options = list(partition = 'medium', time = '7-00:00:00'))
+                    slurm_options = list(partition = 'medium', time = '7-00:00:00', mem = '80gb'))
 
 # combos[, metrics := gs_pred_metrics]
 # results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle, marker_dens))

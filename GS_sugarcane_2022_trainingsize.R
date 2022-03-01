@@ -14,6 +14,7 @@ n_folds <- 5
 # - crop cycle (plant cane, 1st ratoon, 2nd ratoon)
 # - trait
 # - model
+# - training size
 
 # Then in each case do n_iter iterations, and in each iteration the n_folds CV folds.
 

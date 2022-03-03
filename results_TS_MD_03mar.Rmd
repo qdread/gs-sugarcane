@@ -31,8 +31,6 @@ In the following results, I did not include the SVM with radial kernel and SVM w
 ```{r read data}
 library(tidyverse)
 library(gt)
-library(readxl)
-library(ggrepel)
 
 models_do_not_use <- c('SVMradial', 'SVMsigmoid')
 

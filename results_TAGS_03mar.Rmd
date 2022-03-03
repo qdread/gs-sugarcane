@@ -1,0 +1,99 @@
+---
+title: "Results of trait-assisted GS"
+author: "Quentin D. Read"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+      css: "gtstyle.css"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+## Change log
+
+- 03 March: first version
+
+```{r read data}
+library(tidyverse)
+library(gt)
+library(readxl)
+library(data.table)
+
+metrics_tags <- read_csv('project/output/TAGS_all_metrics.csv')
+
+physical_traits <- c("stkwt_kg", "diam", "Brix", "Fiber", "Pol", "Sucrose", "Purity", "stalk_ha")
+economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
+
+theme_set(theme_bw() +
+            theme(strip.background = element_blank(),
+                  legend.position = 'bottom'))
+
+fill_scale <- scale_fill_brewer(palette = 'Dark2')
+null_line <- geom_hline(yintercept = 0.167, size = 1.2, linetype = 'dashed')
+null_line2 <- geom_hline(yintercept = 0, size = 1.2, linetype = 'dashed')
+
+# Read each sheet from phenotype XLSX and combine to single data frame
+# Note there are multiple different NA flags in the data
+pheno_file <- 'project/data/Phenotype_updated_2017-18_IL_analysis_120921.xlsx'
+sheet_names <- excel_sheets(pheno_file)
+phenotype_sheets <- map(sheet_names, ~ cbind(crop_cycle = ., read_xlsx(pheno_file, sheet = ., na = c('.', '-', '-!'))))
+
+# Correct column name, changing Diam to diam (bugfix)
+for (i in 1:length(phenotype_sheets)) names(phenotype_sheets[[i]])[names(phenotype_sheets[[i]]) == 'Diam'] <- 'diam'
+
+phenotypes <- rbindlist(phenotype_sheets, fill = TRUE)
+
+phenotypes_long <- phenotypes[!crop_cycle %in% 'Ratoonability', mget(c("crop_cycle", "Clone", "Rep", "Row", "Column", physical_traits, economic_traits))] |>
+  melt(id.vars = c("crop_cycle", "Clone", "Rep", "Row", "Column"), variable.name = 'trait')
+```
+
+## Summary
+
+I did trait-assisted genomic selection using the `sommer` package in R. This is a mixed model with a multivariate response that uses the additive genetic relationship matrix as part of the random effects. Each genotype has multiple response variables which are a single trait measured in >1 crop cycle. I did this for the first ratoon, where plant cane and first ratoon trait BLUPs were used as the response variable, and for the second ratoon, where plant cane, first ratoon, and second ratoon were used. I excluded the test-set BLUPs for the holdout set in the cross-validation fold *only* for the crop cycle to be predicted; the BLUPs for the "older" data were used for model fitting for both the training and test set. This simulates the situation where we have trait data from one crop cycle but don't yet have it for the next year's cycle.
+
+I did 5-fold cross-validation for each of the two trait-assisted GS, and repeated the CV procedure 25 times.
+
+In the following plots we see that the performance for the trait-assisted GS is not very good. In fact it is slightly worse than without including the additional trait information. I believe this may be because there isn't a very close relationship among traits across crop cycles within a genotype. Because of that, adding the other traits from older crop cycles gives no additional reliable signal and just some more noise. I would not recommend pursuing this much further for this particular population because the initial foray into trait-assisted GS has yielded such unpromising results.
+
+## Prediction performance: physical traits
+
+I only plotted the $r$ (observed-predicted correlation from the cross-validated data) as an index of performance here because it tells well enough that trait-assisted GS, at least as implemented in the `sommer` R package, does not do a very good job.
+
+```{r}
+ggplot(metrics_tags %>% filter(trait %in% physical_traits), aes(x = trait, y = r, fill = crop_cycle, group = interaction(trait, crop_cycle))) +
+  geom_boxplot() +
+  fill_scale +
+  null_line2
+```
+
+## Prediction performance: economic traits
+
+```{r}
+ggplot(metrics_tags %>% filter(trait %in% economic_traits), aes(x = trait, y = r, fill = crop_cycle, group = interaction(trait, crop_cycle))) +
+  geom_boxplot() +
+  fill_scale +
+  null_line2
+```
+
+## Look at correlations among crop cycles
+
+My initial suspicion was that the trait-assisted GS had such poor results because of low correlation between crop cycles. I calculated the correlations to take a look. They are quite modest. So I am not surprised that it probably just added more noise and not enough reliable signal, leading to the worse results of trait-assisted GS relative to models without taking that covariation into account. But we do see that the traits where correlation between crop cycle is highest do tend to have slightly better performance of the trait-assisted GS (such as stalks per hectare and diameter).
+
+```{r}
+# Reshape so we have crop cycles in separate columns
+phenotypes_cc <- dcast(phenotypes_long, Clone + Rep + Row + Column + trait ~ crop_cycle)
+
+trait_corrs <- phenotypes_cc[, .(
+    cor12 = cor(`Plant Cane_2017`, `Ratoon 1_2018`, use = 'pairwise.complete.obs'),
+    cor13 = cor(`Plant Cane_2017`, `Ratoon 2_2019`, use = 'pairwise.complete.obs'),
+    cor23 = cor(`Ratoon 1_2018`, `Ratoon 2_2019`, use = 'pairwise.complete.obs')
+    ), by = .(trait)]
+
+gt(trait_corrs) %>%
+  tab_header(title = 'Trait correlations between crop cycles') %>%
+  fmt_number(columns = 2:4, decimals = 3) %>%
+  data_color(columns = 2:4, colors = scales::col_bin(palette = 'Reds', domain = NULL))
+```
+

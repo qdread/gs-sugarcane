@@ -1,0 +1,224 @@
+---
+title: "Training size and marker density results, v2.1"
+author: "Quentin D. Read"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+      css: "gtstyle.css"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+## Change log
+
+- 03 Mar: updated and corrected results. Iterations increased to 25. Also include 100% TS and MD by concatenating the main GS results.
+- 16 Feb: first version
+
+## Summary of methods
+
+I reran all the GS models first allowing the size of the training population to vary and then allowing the number of markers to vary.
+
+**Training size**. In this second version, it is the same 5-fold cross-validation as in the main analysis, repeated for each combination of crop cycle and trait. However within each cross-validation fold, I randomly subsampled the training set down to a given proportion of the full training set size (which is 80% of the dataset). The sizes of the training sets relative to the full 80% used in normal 5-fold CV were 0.2, 0.3, 0.5, 0.6, 0.8, and 0.9. For each combination of the 6 training set proportions, 3 crop cycles (plant cane, 1<sup>st</sup> ratoon and 2<sup>nd</sup> ratoon), and 13 traits, I did 25 iterations.
+
+**Marker density**. I did the same 5-fold cross-validation as in the main analysis, also repeated for each combination of crop cycle and trait. The only difference is that I randomly subsampled a proportion of the markers to use in fitting the model. Proportions used were 0.2, 0.3, 0.5, 0.6, 0.8, and 0.9. For each combination of marker proportion, crop cycle, and trait, I did 25 iterations.
+
+In the following results, I did not include the SVM with radial kernel and SVM with sigmoid kernel models because they will probably not be included in the final manuscript due to poor performance. But I did run them as part of the analysis so they can be added back in to the results if necessary.
+
+## Training size results
+
+```{r read data}
+library(tidyverse)
+library(gt)
+library(readxl)
+library(ggrepel)
+
+models_do_not_use <- c('SVMradial', 'SVMsigmoid')
+
+metrics_ts <- read_csv('project/output/TS_all_metrics.csv') %>%
+  filter(!model %in% models_do_not_use)
+metrics_md <- read_csv('project/output/MD_all_metrics.csv') %>%
+  filter(!model %in% models_do_not_use)
+
+metrics_full <- read_csv('project/output/GS_all_metrics.csv') %>%
+  filter(!model %in% models_do_not_use)
+
+metrics_ts <- bind_rows(
+  metrics_ts,
+  metrics_full %>% mutate(training_size = 1)
+)
+metrics_md <- bind_rows(
+  metrics_md,
+  metrics_full %>% mutate(marker_density = 1)
+)
+
+physical_traits <- c("stkwt_kg", "diam", "Brix", "Fiber", "Pol", "Sucrose", "Purity", "stalk_ha")
+economic_traits <- c("TCH", "TRS", "CRS", "TSH", "EI")
+
+theme_set(theme_bw() +
+            theme(strip.background = element_blank(),
+                  legend.position = 'bottom',
+                  panel.grid.major.x = element_blank(),
+                  panel.grid.minor.x = element_blank(),
+                  axis.text.x = element_text(size = rel(0.72))))
+
+fill_scale <- scale_fill_brewer(palette = 'Dark2')
+color_scale <- scale_color_brewer(palette = 'Dark2')
+null_line_CI <- geom_hline(yintercept = 0.167, size = 1.2, linetype = 'dashed')
+null_line_r <- geom_hline(yintercept = 0, size = 1.2, linetype = 'dashed')
+x_scale_ts <- scale_x_continuous(name = 'training set', breaks = c(0.2, 0.3, 0.5, 0.6, 0.8, 0.9, 1), labels = scales::percent)
+x_scale_md <- scale_x_continuous(name = 'marker density', breaks = c(0.2, 0.3, 0.5, 0.6, 0.8, 0.9, 1), labels = scales::percent)
+```
+
+Here are some plots of the prediction accuracy $r$ (observed versus predicted correlation coefficient) as training size increases, by model, crop cycle, and trait. Median, 5%, and 95% quantiles are shown.
+
+Overall, I think the trend with training size looks very weak and does not depend on which model is used. It is similar whether $r$ or $CI$ is used as the metric of model performance. There is a slight increasing trend in performance with increased training size which basically flattens off at 80%. We see more noise at the lower training set proportions which makes sense.
+
+```{r}
+qprobs <- c(0.05, 0.5, 0.95)
+
+quantiles_ts <- metrics_ts %>%
+  pivot_longer(cols = r:RMSE, names_to = 'metric', values_to = 'value') %>%
+  group_by(trait, crop_cycle, training_size, model, metric) %>%
+  summarize(q = qprobs, v = quantile(value, probs = qprobs, na.rm = TRUE)) %>%
+  mutate(q = round(q, 2)) %>%
+  pivot_wider(id_cols = trait:metric, names_from = q, names_prefix = 'q', values_from = v)
+
+r_range <- quantiles_ts %>%
+  ungroup %>%
+  filter(metric %in% 'r') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_r <- scale_y_continuous(name = 'r', limits = r_range)
+
+ci_range <- quantiles_ts %>%
+  ungroup %>%
+  filter(metric %in% 'CI') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_ci <- scale_y_continuous(name = 'CI', limits = ci_range)
+
+pd <- position_dodge(width = 0.05)
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_ts %>% filter(trait %in% physical_traits, metric %in% 'r'), aes(x = training_size, group = interaction(training_size, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_ts + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing training set proportion', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_ts %>% filter(trait %in% economic_traits, metric %in% 'r'), aes(x = training_size, group = interaction(training_size, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_ts + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing training set proportion', 'economic traits')
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_ts %>% filter(trait %in% physical_traits, metric %in% 'CI'), aes(x = training_size, group = interaction(training_size, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_ts + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing training set proportion', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_ts %>% filter(trait %in% economic_traits, metric %in% 'CI'), aes(x = training_size, group = interaction(training_size, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_ts + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing training set proportion', 'economic traits')
+```
+
+## Marker density results
+
+The plots are the same format as the training size plots. The positive trend is weak if not nonexistent for many of the traits. A few of them do have reduced performance at 20% to 30% markers but I would argue that the number of markers could be decreased by at least 50% without having any negative effect on prediction performance.
+
+```{r}
+quantiles_md <- metrics_md %>%
+  pivot_longer(cols = r:RMSE, names_to = 'metric', values_to = 'value') %>%
+  group_by(trait, crop_cycle, marker_density, model, metric) %>%
+  summarize(q = qprobs, v = quantile(value, probs = qprobs, na.rm = TRUE)) %>%
+  mutate(q = round(q, 2)) %>%
+  pivot_wider(id_cols = trait:metric, names_from = q, names_prefix = 'q', values_from = v)
+
+r_range <- quantiles_md %>%
+  ungroup %>%
+  filter(metric %in% 'r') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_r <- scale_y_continuous(name = 'r', limits = r_range)
+
+ci_range <- quantiles_md %>%
+  ungroup %>%
+  filter(metric %in% 'CI') %>%
+  select(starts_with('q')) %>%
+  unlist %>%
+  range
+y_ci <- scale_y_continuous(name = 'CI', limits = ci_range)
+
+pd <- position_dodge(width = 0.05)
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% physical_traits, metric %in% 'r'), aes(x = marker_density, group = interaction(marker_density, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing marker density', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% economic_traits, metric %in% 'r'), aes(x = marker_density, group = interaction(marker_density, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_r +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_r +
+  ggtitle('Prediction accuracy with increasing marker density', 'economic traits')
+```
+
+```{r, fig.height = 8 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% physical_traits, metric %in% 'CI'), aes(x = marker_density, group = interaction(marker_density, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing marker density', 'physical traits')
+```
+
+```{r, fig.height = 5 * 1.5}
+ggplot(quantiles_md %>% filter(trait %in% economic_traits, metric %in% 'CI'), aes(x = marker_density, group = interaction(marker_density, model), y = q0.5, ymin = q0.05, ymax = q0.95)) +
+  geom_errorbar(width = 0.02, position = pd) +
+  geom_line(aes(color = model, group = model), alpha = 0.5, position = pd) +
+  geom_point(aes(color = model), position = pd) +
+  null_line_CI +
+  facet_grid(trait ~ crop_cycle) +
+  x_scale_md + color_scale + y_ci +
+  ggtitle('Coincidence index with increasing marker density', 'economic traits')
+```

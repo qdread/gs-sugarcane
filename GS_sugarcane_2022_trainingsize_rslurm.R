@@ -32,7 +32,7 @@ gs_ts_fun <- function(iter, trait, crop_cycle, train_size, seed) {
     set.seed(seed)
     pred_vals <- gs_all(GD = geno_mat, PD = pheno_blups, 
                         crop_cycle_to_use = crop_cycle, trait_to_use = trait, k = n_folds, 
-                        marker_density = 1, training_size = train_size)
+                        marker_density = 1, training_size = train_size, temp_dir = '/90daydata/shared/qdr/gs_sugarcane/temp')
     fwrite(pred_vals, glue('/project/qdr/gs_sugarcane/output/TS/phenotypes_{trait}_{crop_cycle}_TS{train_size}_{iter}.csv'))
     pred_metrics <- pred_vals[, calc_metrics(Y_obs, Y_pred), by = model]
     fwrite(pred_metrics, metric_file_name)
@@ -41,7 +41,7 @@ gs_ts_fun <- function(iter, trait, crop_cycle, train_size, seed) {
   }
   return(pred_metrics)
 }
-tsjob <- slurm_apply(f = gs_ts_fun, params = combos, jobname = 'gsts_rslurm', nodes = 4, cpus_per_node = 36,
+tsjob <- slurm_apply(f = gs_ts_fun, params = combos, jobname = 'gsts_rslurm', nodes = 6, cpus_per_node = 20,
                     global_objects = c('geno_mat', 'pheno_blups', 'n_folds'),
                     slurm_options = list(partition = 'medium', time = '7-00:00:00', mem = '80gb'))
 

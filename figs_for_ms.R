@@ -43,6 +43,8 @@ economic_traits <- c("TCH", "CRS", "TSH", "EI")
 theme_set(theme_bw() +
             theme(strip.background = element_blank(),
                   legend.position = 'bottom',
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
                   axis.text = element_text(color = 'black')))
 
 colorblind_colors <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -309,14 +311,15 @@ p_int_econ_tags <- ggplot(metrics_tags %>% filter(trait %in% economic_traits), a
 
 # Training size trends ----------------------------------------------------
 
-pd <- position_dodge(width = 0.06)
+pd <- position_dodge(width = 0.07)
+bplw <- 0.2 # Boxplot line width should be thin.
 r_y_extended <- scale_y_continuous(name = 'prediction accuracy', limits = c(-0.182, 0.505))
+ci_y_extended <- scale_y_continuous(name = 'coincidence index', limits = c(0.06, 0.406))
 
 ### pc
-
 p_r_phys_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'PlantCane'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -326,7 +329,7 @@ p_r_phys_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'PlantCane'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -334,27 +337,27 @@ p_r_econ_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'PlantCane'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing training set proportion', 'physical traits: plant cane (2017)')
 
 p_ci_econ_ts_pc <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'PlantCane'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing training set proportion', 'economic traits: plant cane (2017)')
 
 ### 1r
 
 p_r_phys_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon1'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -364,7 +367,7 @@ p_r_phys_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon1'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -372,27 +375,27 @@ p_r_econ_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon1'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing training set proportion', 'physical traits: first ratoon (2018)')
 
 p_ci_econ_ts_1r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon1'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing training set proportion', 'economic traits: first ratoon (2018)')
 
 ### 2r
 
 p_r_phys_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon2'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -402,7 +405,7 @@ p_r_phys_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon2'), aes(x = training_size, group = interaction(training_size, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_ts + fill_scale + color_scale + r_y_extended +
@@ -410,20 +413,20 @@ p_r_econ_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon2'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing training set proportion', 'physical traits: second ratoon (2019)')
 
 p_ci_econ_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon2'), aes(x = training_size, group = interaction(training_size, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_ts + fill_scale + color_scale + ci_y_scale +
+  x_scale_ts + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing training set proportion', 'economic traits: second ratoon (2019)')
 
 
@@ -431,7 +434,7 @@ p_ci_econ_ts_2r <- ggplot(metrics_ts %>% filter(trait %in% economic_traits, crop
 
 p_r_phys_md_pc <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'PlantCane'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -441,7 +444,7 @@ p_r_phys_md_pc <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_md_pc <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'PlantCane'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -449,27 +452,27 @@ p_r_econ_md_pc <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_md_pc <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'PlantCane'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing marker density', 'physical traits: plant cane (2017)')
 
 p_ci_econ_md_pc <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'PlantCane'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing marker density', 'economic traits: plant cane (2017)')
 
 ### 1r
 
 p_r_phys_md_1r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon1'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -479,7 +482,7 @@ p_r_phys_md_1r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_md_1r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon1'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -487,27 +490,27 @@ p_r_econ_md_1r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_md_1r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon1'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing marker density', 'physical traits: first ratoon (2018)')
 
 p_ci_econ_md_1r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon1'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing marker density', 'economic traits: first ratoon (2018)')
 
 ### 2r
 
 p_r_phys_md_2r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon2'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -517,7 +520,7 @@ p_r_phys_md_2r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_
 
 p_r_econ_md_2r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon2'), aes(x = marker_density, group = interaction(marker_density, model), y = r, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
+  geom_boxplot(position = pd, lwd = bplw) +
   r_null_line +
   facet_wrap(~ trait) +
   x_scale_md + fill_scale + color_scale + r_y_extended +
@@ -525,20 +528,20 @@ p_r_econ_md_2r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_
 
 p_ci_phys_md_2r <- ggplot(metrics_md %>% filter(trait %in% physical_traits, crop_cycle %in% 'Ratoon2'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   theme(legend.position = c(0.7, 0.15)) +
   guides(fill = guide_legend(nrow = 3)) +
   ggtitle('Coincidence index with increasing marker density', 'physical traits: second ratoon (2019)')
 
 p_ci_econ_md_2r <- ggplot(metrics_md %>% filter(trait %in% economic_traits, crop_cycle %in% 'Ratoon2'), aes(x = marker_density, group = interaction(marker_density, model), y = CI, fill = model)) +
   stat_summary(fun = median, geom = 'line', aes(group = model, color = model), alpha = 0.6, position = pd) +
-  geom_boxplot(position = pd) +
-  r_null_line +
+  geom_boxplot(position = pd, lwd = bplw) +
+  ci_null_line +
   facet_wrap(~ trait) +
-  x_scale_md + fill_scale + color_scale + ci_y_scale +
+  x_scale_md + fill_scale + color_scale + ci_y_extended +
   ggtitle('Coincidence index with increasing marker density', 'economic traits: second ratoon (2019)')
 
 
@@ -549,72 +552,72 @@ w1 <- 5
 h2 <- 4
 w2 <- 4.5
 
-ggsave('project/figs/coincidenceindex_physical_plantcane.png', p_ci_phys_pc, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_1stratoon.png', p_ci_phys_1r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_2ndratoon.png', p_ci_phys_2r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_plantcane.png', p_ci_econ_pc, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_1stratoon.png', p_ci_econ_1r, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_2ndratoon.png', p_ci_econ_2r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_physical_plantcane.png', p_ci_phys_pc, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_physical_1stratoon.png', p_ci_phys_1r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_physical_2ndratoon.png', p_ci_phys_2r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_economic_plantcane.png', p_ci_econ_pc, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_economic_1stratoon.png', p_ci_econ_1r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_coincidenceindex_economic_2ndratoon.png', p_ci_econ_2r, height = h2, width = w2, dpi = 400)
 
-ggsave('project/figs/predaccuracy_physical_plantcane.png', p_r_phys_pc, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_1stratoon.png', p_r_phys_1r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_2ndratoon.png', p_r_phys_2r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_plantcane.png', p_r_econ_pc, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_1stratoon.png', p_r_econ_1r, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_2ndratoon.png', p_r_econ_2r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_physical_plantcane.png', p_r_phys_pc, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_physical_1stratoon.png', p_r_phys_1r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_physical_2ndratoon.png', p_r_phys_2r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_economic_plantcane.png', p_r_econ_pc, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_economic_1stratoon.png', p_r_econ_1r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_predaccuracy_economic_2ndratoon.png', p_r_econ_2r, height = h2, width = w2, dpi = 400)
 
-ggsave('project/figs/intercept_physical_plantcane.png', p_int_phys_pc, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/intercept_physical_1stratoon.png', p_int_phys_1r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/intercept_physical_2ndratoon.png', p_int_phys_2r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/intercept_economic_plantcane.png', p_int_econ_pc, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/intercept_economic_1stratoon.png', p_int_econ_1r, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/intercept_economic_2ndratoon.png', p_int_econ_2r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_physical_plantcane.png', p_int_phys_pc, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_physical_1stratoon.png', p_int_phys_1r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_physical_2ndratoon.png', p_int_phys_2r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_economic_plantcane.png', p_int_econ_pc, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_economic_1stratoon.png', p_int_econ_1r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_intercept_economic_2ndratoon.png', p_int_econ_2r, height = h2, width = w2, dpi = 400)
 
-ggsave('project/figs/slope_physical_plantcane.png', p_slope_phys_pc, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/slope_physical_1stratoon.png', p_slope_phys_1r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/slope_physical_2ndratoon.png', p_slope_phys_2r, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/slope_economic_plantcane.png', p_slope_econ_pc, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/slope_economic_1stratoon.png', p_slope_econ_1r, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/slope_economic_2ndratoon.png', p_slope_econ_2r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_physical_plantcane.png', p_slope_phys_pc, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_physical_1stratoon.png', p_slope_phys_1r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_physical_2ndratoon.png', p_slope_phys_2r, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_economic_plantcane.png', p_slope_econ_pc, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_economic_1stratoon.png', p_slope_econ_1r, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/mainanalysis_slope_economic_2ndratoon.png', p_slope_econ_2r, height = h2, width = w2, dpi = 400)
 
-ggsave('project/figs/coincidenceindex_physical_traitassisted.png', p_ci_phys_tags, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_traitassisted.png', p_ci_econ_tags, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_traitassisted.png', p_r_phys_tags, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_traitassisted.png', p_r_econ_tags, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/intercept_physical_traitassisted.png', p_int_phys_tags, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/intercept_economic_traitassisted.png', p_int_econ_tags, height = h2, width = w2, dpi = 400)
-ggsave('project/figs/slope_physical_traitassisted.png', p_slope_phys_tags, height = h1, width = w1, dpi = 400)
-ggsave('project/figs/slope_economic_traitassisted.png', p_slope_econ_tags, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/traitassisted_coincidenceindex_physical.png', p_ci_phys_tags, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/traitassisted_coincidenceindex_economic.png', p_ci_econ_tags, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/traitassisted_predaccuracy_physical.png', p_r_phys_tags, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/traitassisted_predaccuracy_economic.png', p_r_econ_tags, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/traitassisted_intercept_physical.png', p_int_phys_tags, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/traitassisted_intercept_economic.png', p_int_econ_tags, height = h2, width = w2, dpi = 400)
+ggsave('project/figs/traitassisted_slope_physical.png', p_slope_phys_tags, height = h1, width = w1, dpi = 400)
+ggsave('project/figs/traitassisted_slope_economic.png', p_slope_econ_tags, height = h2, width = w2, dpi = 400)
 
-h3 <- 7
-w3 <- 7
-h4 <- 5
-w4 <- 7
+h3 <- 8
+w3 <- 10
+h4 <- 6
+w4 <- 8
 
-ggsave('project/figs/coincidenceindex_physical_markerdensity_plantcane.png', p_ci_phys_md_pc, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_markerdensity_1stratoon.png', p_ci_phys_md_1r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_markerdensity_2ndratoon.png', p_ci_phys_md_2r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_markerdensity_plantcane.png', p_ci_econ_md_pc, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_markerdensity_1stratoon.png', p_ci_econ_md_1r, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_markerdensity_2ndratoon.png', p_ci_econ_md_2r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_physical_plantcane.png', p_ci_phys_md_pc, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_physical_1stratoon.png', p_ci_phys_md_1r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_physical_2ndratoon.png', p_ci_phys_md_2r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_economic_plantcane.png', p_ci_econ_md_pc, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_economic_1stratoon.png', p_ci_econ_md_1r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_coincidenceindex_economic_2ndratoon.png', p_ci_econ_md_2r, height = h4, width = w4, dpi = 400)
 
-ggsave('project/figs/predaccuracy_physical_markerdensity_plantcane.png', p_r_phys_md_pc, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_markerdensity_1stratoon.png', p_r_phys_md_1r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_markerdensity_2ndratoon.png', p_r_phys_md_2r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_markerdensity_plantcane.png', p_r_econ_md_pc, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_markerdensity_1stratoon.png', p_r_econ_md_1r, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_markerdensity_2ndratoon.png', p_r_econ_md_2r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_physical_plantcane.png', p_r_phys_md_pc, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_physical_1stratoon.png', p_r_phys_md_1r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_physical_2ndratoon.png', p_r_phys_md_2r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_economic_plantcane.png', p_r_econ_md_pc, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_economic_1stratoon.png', p_r_econ_md_1r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/markerdensity_predaccuracy_economic_2ndratoon.png', p_r_econ_md_2r, height = h4, width = w4, dpi = 400)
 
-ggsave('project/figs/coincidenceindex_physical_trainingsize_plantcane.png', p_ci_phys_ts_pc, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_trainingsize_1stratoon.png', p_ci_phys_ts_1r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_physical_trainingsize_2ndratoon.png', p_ci_phys_ts_2r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_trainingsize_plantcane.png', p_ci_econ_ts_pc, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_trainingsize_1stratoon.png', p_ci_econ_ts_1r, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/coincidenceindex_economic_trainingsize_2ndratoon.png', p_ci_econ_ts_2r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_physical_plantcane.png', p_ci_phys_ts_pc, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_physical_1stratoon.png', p_ci_phys_ts_1r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_physical_2ndratoon.png', p_ci_phys_ts_2r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_economic_plantcane.png', p_ci_econ_ts_pc, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_economic_1stratoon.png', p_ci_econ_ts_1r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_coincidenceindex_economic_2ndratoon.png', p_ci_econ_ts_2r, height = h4, width = w4, dpi = 400)
 
-ggsave('project/figs/predaccuracy_physical_trainingsize_plantcane.png', p_r_phys_ts_pc, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_trainingsize_1stratoon.png', p_r_phys_ts_1r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_physical_trainingsize_2ndratoon.png', p_r_phys_ts_2r, height = h3, width = w3, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_trainingsize_plantcane.png', p_r_econ_ts_pc, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_trainingsize_1stratoon.png', p_r_econ_ts_1r, height = h4, width = w4, dpi = 400)
-ggsave('project/figs/predaccuracy_economic_trainingsize_2ndratoon.png', p_r_econ_ts_2r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_physical_plantcane.png', p_r_phys_ts_pc, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_physical_1stratoon.png', p_r_phys_ts_1r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_physical_2ndratoon.png', p_r_phys_ts_2r, height = h3, width = w3, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_economic_plantcane.png', p_r_econ_ts_pc, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_economic_1stratoon.png', p_r_econ_ts_1r, height = h4, width = w4, dpi = 400)
+ggsave('project/figs/trainingsize_predaccuracy_economic_2ndratoon.png', p_r_econ_ts_2r, height = h4, width = w4, dpi = 400)

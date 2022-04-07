@@ -9,7 +9,12 @@
 
 ## Data
 
-All code and data required to reproduce the analyses in the manuscript are included here in this repository (the input data are only ~9 MB total). 
+All code and data required to reproduce the analyses in the manuscript are included here in this repository (the input data are only ~10 MB total). 
+
+Data are found in the `project/data` folder in this repo. There are two files:
+
+- `Phenotype_updated_2017-18_IL_analysis_120921.xlsx`: Phenotype data in a MS Excel spreadsheet with columns of trait values from each crop cycle in a separate tab. This also includes experimental layout information (the replicate, plot, row, and column for each measured individual).
+- `sugarcane.10501.SNPs.432.Inds.CloneNames.hmp.txt`: Genotype data in a single tab-separated text file with one column for each of the 432 clones and one row for each SNP locus.
 
 ## How to run the analysis
 

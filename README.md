@@ -2,16 +2,47 @@
 
 ## Project contributors
 
-- Quentin Read, USDA ARS/NC State University
-- Md Sariful Islam, USDA ARS
+- Md. Sariful Islam, USDA ARS (PI)
+- Quentin D. Read, USDA ARS/NC State University (analyst)
 - Alex Lipka, University of Illinois
 - Per McCord, Washington State University
 
-## How to run
+## Data
 
-This requires phenotype and genotype data provided by Sarif. The main script is `GS_sugarcane_2022.R` which needs to be run on a remote cluster. Functions called in that script are sourced from `GS_sugarcane_2022_fns.R`. Additional scripts and notebooks are for exporting and visualizing output.
+All code and data required to reproduce the analyses in the manuscript are included here in this repository (the input data are only ~9 MB total). 
 
-## Notes
+## How to run the analysis
 
-- Old code does not seem to work anymore for ADE. The function `sommer::A.mat()` no longer has the argument `shrink`. It did when the code was written, for example see <https://github.com/covaruber/sommer/blob/0333ae177a2304fdeb01e7f668c3db5da57c520d/R/FUN_relationships.R>. Either roll back to an older version of `sommer` or rewrite this code to get the same results with the new version.
+### Model fitting
 
+There are five major steps to the analysis that can be run in any order. The first three scripts are set up to be run on a remote Slurm cluster over 4 nodes with 36 processor cores each using the `rslurm` package, the fourth script submits the job to the cluster directly without using `rslurm`, and the last script is run locally assuming 4 processor cores are available.
+
+- `GS_sugarcane_2022_runGS_rslurm.R`: fits all genomic selection models for all combinations of crop cycle and trait and performs 5-fold cross-validation to generate out-of-sample predictions. The entire cross-validation procedure is repeated 25 times for every combination of crop cycle and trait.
+- `GS_sugarcane_2022_markerdensity_rslurm.R`: repeats the same cross-validation procedure (k = 5 with 25 iterations) for every combination of crop cycle and trait, but the genotypic marker dataset is subsampled to 20%, 30%, 50%, 60%, 80%, and 90% of its original size.
+- `GS_sugarcane_2022_trainingsize_rslurm.R`: repeats the same cross-validation procedure (k = 5 with 25 iterations) for every combination of crop cycle and trait, but the training dataset of genotypes is subsampled to 20%, 30%, 50%, 60%, 80%, and 90% of its original size within each cross-validation fold (i.e., the 80% of the data used for fitting the model within each fold are further subsampled).
+- `GS_sugarcane_2022_traitassisted.R`: performs trait-assisted genomic selection for each trait for the two later crop cycles. For the first ratoon, the traits measured at plant cane stage are included in the multivariate response, and for the second ratoon, both the plant cane and first ratoon traits are included. Submit this using the job submission script `doalltags.sh`.
+- `heritability_2022.R`: calculates broad-sense and narrow-sense heritabilities for each trait for the three crop cycles separately, and for all crop cycles combined.
+
+Each of the four scripts above sources two other scripts:
+
+- `GS_sugarcane_2022_fns.R`: defines all functions needed to fit the models.
+- `GS_sugarcane_2022_loaddata_rslurm.R`: loads all necessary R packages and data, and pre-processes the data.
+
+### Visualizing results
+
+After running the model fitting scripts above, run the following script:
+
+- `export_all_metrics.R`: combines the many temporary output files from each iteration of the analyses above into a single CSV for each main component of the analysis.
+
+Results are visualized and described, using figures, tables, and text, in three RMarkdown notebooks which can be rendered into HTML documents once the results have been generated:
+
+- `results_GS.Rmd`: main genomic selection results
+- `results_TS_MD.Rmd`: results of the model fitting varying training size and marker density
+- `results_TAGS.Rmd`: trait-assisted genomic selection results
+
+PNG figures for the manuscript are created in the following scripts:
+
+- `figs_for_ms.R`: the majority of the figures, comparing model performance across models and traits
+- `figs_for_ms_density_scatter.R`: density plots of traits and scatterplots comparing model performance for each trait with heritability and trait variation
+
+*This document last modified by QDR, 07 April 2022*.

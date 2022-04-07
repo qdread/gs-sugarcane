@@ -42,8 +42,3 @@ gs_fun <- function(iter, trait, crop_cycle, seed) {
 sjob <- slurm_apply(f = gs_fun, params = combos, jobname = 'gs_rslurm', nodes = 4, cpus_per_node = 36,
                     global_objects = c('geno_mat', 'pheno_blups', 'n_folds'),
                     slurm_options = list(partition = 'medium', time = '7-00:00:00', mem = '80gb'))
-
-# combos[, metrics := gs_pred_metrics]
-# results <- unnest_dt(combos, col = metrics, id = .(iter, trait, crop_cycle))
-# 
-# fwrite(results, 'project/output/all_metrics.csv')

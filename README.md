@@ -2,9 +2,10 @@
 
 ## Project contributors
 
-- Quentin Read, USDA ARS
+- Quentin Read, USDA ARS/NC State University
 - Md Sariful Islam, USDA ARS
-- Alex Lipka, U. Illinois
+- Alex Lipka, University of Illinois
+- Per McCord, Washington State University
 
 ## How to run
 

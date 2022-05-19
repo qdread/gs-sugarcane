@@ -1,11 +1,20 @@
-# Genomic selection of sugarcane
+# Accuracy of genomic prediction of yield and sugar traits in sugarcane
+
+This repository accompanies the manuscript:
+
+Islam, Md., P. H. McCord, Q. D. Read, L. Qin, A. Lipka, S. Sood, J. Todd, and M. Olatoye. Accuracy of genomic prediction of yield and sugar traits in *Saccharum* spp. hybrids. *Agriculture*, in preparation.
 
 ## Project contributors
 
 - Md. Sariful Islam, USDA ARS (PI)
-- Quentin D. Read, USDA ARS/NC State University (analyst)
-- Alex Lipka, University of Illinois
 - Per McCord, Washington State University
+- Quentin D. Read, USDA ARS/NC State University (analyst)
+- Lifang Qin, USDA ARS
+- Alexander Lipka, University of Illinois
+- Sushma Sood, USDA ARS
+- James Todd, USDA ARS
+- Marcus Olatoye, University of Illinois
+
 
 ## Data
 

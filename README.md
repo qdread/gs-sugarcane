@@ -1,5 +1,7 @@
 # Accuracy of genomic prediction of yield and sugar traits in sugarcane
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6563705.svg)](https://doi.org/10.5281/zenodo.6563705)
+
 This repository accompanies the manuscript:
 
 Islam, Md., P. H. McCord, Q. D. Read, L. Qin, A. Lipka, S. Sood, J. Todd, and M. Olatoye. Accuracy of genomic prediction of yield and sugar traits in *Saccharum* spp. hybrids. *Agriculture*, in preparation.
